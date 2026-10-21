@@ -65,5 +65,8 @@ Nothing saves a frame or a landmark list. The model downloads once when you clic
 The instrument is MediaPipe Face Landmarker, pinned to version 1.1.1, the same one the Make a Face lab used.
 
 ## Credits
-- Ethan Takher 
-- Fordham Wong
+
+- Ethan Takher — `still`
+- Fordham Wong — `near`
+
+Live: https://fwong29.github.io/team-repository/
