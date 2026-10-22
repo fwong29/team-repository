@@ -56,6 +56,7 @@ export const boxing = {
       hitFlash: 0,
       hurtFlash: 0,
       bob: 0,
+      lastHit: null,
       done: false,
     };
 
@@ -71,7 +72,16 @@ export const boxing = {
       return !!body?.ok && Math.abs(body.lean) > 0.45;
     }
 
-    function land(power, side) {
+    function land(power, side, event) {
+      if (event) {
+        state.lastHit = {
+          side,
+          // Reach per second across an arm's length, turned into mph.
+          speedMph: Math.round(event.extension * event.power * 12 * 10) / 10,
+          depth: event.depth > 0.05 ? `${Math.round(event.depth * 100)}%` : 'camera only',
+          power: `${Math.round(power * 100)}%`,
+        };
+      }
       const damage = (6 + power * 16) * (0.4 + state.stamina * 0.6);
       state.health[1] = Math.max(0, state.health[1] - damage);
       state.stamina = clamp(state.stamina - 0.1 - power * 0.1);
@@ -109,7 +119,7 @@ export const boxing = {
           if (e.type !== 'punch') continue;
           if (e.player === 0) {
             if (state.stamina < 0.12) { toasts.add('Winded', { color: PALETTE.dim, size: 20, y: 0.6 }); continue; }
-            land(e.power, e.side);
+            land(e.power, e.side, e);
           } else if (twoPlayer) {
             state.health[0] = Math.max(0, state.health[0] - (6 + e.power * 14));
             state.hurtFlash = 0.5;

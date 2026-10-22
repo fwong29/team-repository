@@ -32,6 +32,7 @@
     import { buildBaseball } from '../three/baseball3d.js';
     import { buildBasketball } from '../three/basketball3d.js';
     import { buildBoxing } from '../three/boxing3d.js';
+    import { buildBowling } from '../three/bowling3d.js';
 
     // One straight hole and one dogleg, enough to prove the ribbon bends.
     const HOLE = { name: 'Elbow Right', length: 340, par: 4, bend: 0.62, bendAt: 0.35,
@@ -48,6 +49,7 @@
       baseball: () => buildBaseball(stage),
       basketball: () => buildBasketball(stage),
       boxing: () => buildBoxing(stage),
+      bowling: () => buildBowling(stage),
     };
     const scene = (BUILD[which] || BUILD.tennis)();
 
@@ -106,6 +108,10 @@
         scene.standAt(0.45);
         scene.ballAt(0.4, 1.3 + Math.sin(t * 2) * 0.3, -4.5);
         scene.frame(stage, 0.45);
+      } else if (which === 'bowling') {
+        scene.setPins([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+        scene.ballAt(Math.sin(t) * 0.25, (t * 0.5) % 1);
+        scene.frame(stage);
       } else {
         scene.frame(stage);
       }

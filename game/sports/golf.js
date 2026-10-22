@@ -77,6 +77,27 @@ function lieAt(hole, along, off) {
 
 const LIE_CARRY = { fairway: 1, rough: 0.68, sand: 0.55, water: 1 };
 
+// name, how far it carries relative to a full swing, and how much it punishes
+// an off-centre face. A wedge is short but forgiving; a driver is the reverse.
+const CLUBS = [
+  { name: 'Driver', carry: 1.00, forgiveness: 0.6 },
+  { name: '3 Wood', carry: 0.84, forgiveness: 0.75 },
+  { name: '5 Iron', carry: 0.62, forgiveness: 0.9 },
+  { name: '9 Iron', carry: 0.40, forgiveness: 1.1 },
+  { name: 'Wedge',  carry: 0.24, forgiveness: 1.4 },
+  { name: 'Putter', carry: 0.10, forgiveness: 2.2 },
+];
+
+// The club for the distance left, in yards.
+function clubFor(yardsLeft, onGreen) {
+  if (onGreen) return CLUBS[5];
+  if (yardsLeft > 230) return CLUBS[0];
+  if (yardsLeft > 180) return CLUBS[1];
+  if (yardsLeft > 120) return CLUBS[2];
+  if (yardsLeft > 55) return CLUBS[3];
+  return CLUBS[4];
+}
+
 export const golf = {
   id: 'golf',
   label: 'Golf',
@@ -114,6 +135,8 @@ export const golf = {
       total: [0, 0],
       ball: { along: 0, off: 0 },   // along the hole 0..1, off the centre line -1..1
       lie: 'fairway',
+      club: CLUBS[0],
+      lastShot: null,
       flight: null,
       wind: (Math.random() - 0.5) * 0.5,
       aim: 0,
@@ -157,8 +180,9 @@ export const golf = {
       // Power from the swing, bend from the angle it travels at, then the lie
       // and the slope take their cut.
       const power = clamp(0.25 + event.power * 0.95);
-      const shape = clamp((event.angle + 90) / 120, -1, 1) * 0.35;
-      const carry = power * (1 - state.ball.along) * 1.15
+      const shape = clamp((event.angle + 90) / 120, -1, 1) * 0.35 / state.club.forgiveness;
+      const club = state.club;
+      const carry = power * club.carry * 1.9 * (1 - state.ball.along) * 0.62
         * LIE_CARRY[state.lie] * (1 - h0.rise * 0.3);
       state.flight = {
         t: 0,
@@ -168,6 +192,21 @@ export const golf = {
           off: clamp(state.ball.off + state.aim * 0.4 + shape + state.wind * power * 0.4, -1.3, 1.3),
         },
         power,
+      };
+
+      // Everything the swing measured, in units a player understands. The
+      // numbers were always there; this is the first time they are kept.
+      const faceDeg = event.angle + 90;              // 0 is square through the ball
+      state.lastShot = {
+        club: state.club.name,
+        // Peak hand speed is in body widths a second; a shoulder is about
+        // 0.45 m, and 2.237 turns m/s into mph.
+        speedMph: Math.round(event.speed * 0.45 * 2.237 * 10) / 10,
+        carryYards: Math.round(carry * h0.length),
+        faceDeg: Math.round(faceDeg),
+        shape: faceDeg > 8 ? 'fade' : faceDeg < -8 ? 'draw' : 'straight',
+        plane: event.plane,
+        windEffect: Math.round(state.wind * power * 40),
       };
       state.phase = 'fly';
       Sound.hit(power);
@@ -213,6 +252,9 @@ export const golf = {
       // The hole being played, so a renderer can build it.
       get hole() { return HOLES[Math.min(state.hole, HOLES.length - 1)]; },
       get holeCount() { return HOLES.length; },
+      // The two functions that define the hole's shape, so a map can be
+      // drawn from exactly what the rules use.
+      centreAt, widthAt,
       get done() { return state.done; },
       get result() {
         const par = HOLES.reduce((a, b) => a + b.par, 0);
@@ -227,6 +269,13 @@ export const golf = {
       update(dt, now, events) {
         const body = input.player(twoPlayer ? state.turn : 0);
         if (state.phase === 'aim' && body?.ok) state.aim = lerp(state.aim, body.lean, 0.12);
+
+        // The club follows the distance left, so it is always the sensible one
+        // for the shot in front of you.
+        const h1 = hole();
+        const left = (1 - state.ball.along) * h1.length;
+        state.club = clubFor(left, left < 18);
+        state.yardsLeft = Math.round(left);
 
         if (state.phase === 'fly') {
           state.flight.t += dt * 1.5;

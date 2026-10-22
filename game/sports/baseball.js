@@ -48,6 +48,7 @@ export const baseball = {
       bases: [false, false, false],
       turn: 0,
       swungAt: null,
+      lastHit: null,
       shake: 0,
       done: false,
     };
@@ -107,6 +108,13 @@ export const baseball = {
 
       const progress = state.pitch.t / state.pitch.duration;
       const error = Math.abs(progress - 0.82);    // 0.82 is the plate
+      state.lastHit = {
+        speedMph: Math.round(event.speed * 0.45 * 2.237 * 10) / 10,
+        timing: progress < 0.82 ? `${Math.round((0.82 - progress) * 1000)} ms early`
+                                : `${Math.round((progress - 0.82) * 1000)} ms late`,
+        contact: error > 0.2 ? 'missed' : error > 0.11 ? 'edge' : 'flush',
+        plane: event.plane,
+      };
       state.shake = 0.5;
 
       if (error > 0.2) {

@@ -48,6 +48,7 @@ export const tennis = {
       court: 0.5,          // where the player stands, near to far
       farX: 0.5,
       message: 'Get ready',
+      lastHit: null,
       shake: 0,
       done: false,
     };
@@ -95,6 +96,12 @@ export const tennis = {
       state.rally++;
       state.shake = 0.35 + event.power * 0.4;
       Sound.hit(event.power);
+      state.lastHit = {
+        speedMph: Math.round(event.speed * 0.45 * 2.237 * 10) / 10,
+        shot: event.dirX > 0 ? 'forehand' : 'backhand',
+        timing: timing > 0.72 ? 'clean' : timing > 0.4 ? 'ok' : 'late',
+        faceDeg: Math.round(event.angle),
+      };
       const shot = event.dirX > 0 ? 'Forehand' : 'Backhand';
       toasts.add(timing > 0.72 ? `${shot}!` : shot, {
         color: timing > 0.72 ? PALETTE.gold : PALETTE.ink, size: 26, y: 0.62,

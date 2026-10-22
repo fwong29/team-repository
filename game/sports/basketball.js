@@ -50,6 +50,7 @@ export const basketball = {
       spot: 0.35,         // 0 is under the hoop, 1 is a long way out
       shot: null,
       streak: 0,
+      lastHit: null,
       done: false,
     };
 
@@ -64,6 +65,12 @@ export const basketball = {
       const off = event.power - need;
       const good = Math.abs(off) < forgiveness && event.arc > 0.25;
       state.taken[state.turn]++;
+      state.lastHit = {
+        speedMph: Math.round(event.speed * 0.45 * 2.237 * 10) / 10,
+        arc: event.arc > 0.6 ? 'high' : event.arc > 0.3 ? 'good' : 'flat',
+        result: good ? 'made' : off > 0 ? 'long' : 'short',
+        needed: Math.round(need * 100) + '%',
+      };
       state.shot = { t: 0, good, power: event.power, arc: event.arc, worth: worth(), off };
       Sound.whoosh(0.5 + event.power * 0.4);
     }

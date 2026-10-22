@@ -14,6 +14,7 @@ import { Input, Calibration } from '../input.js';
 import { Sound } from '../audio.js';
 import { PALETTE, Cursor, Toasts, text, roundRect, menuTiles, drawTile, drawBanner, drawMeter } from '../ui.js';
 import { clamp, lerp } from '../filters.js';
+import { holeMap, swingBar, readout, windDial, panel } from './hud3d.js';
 
 import { Stage } from './stage.js';
 import { buildTennis } from './tennis3d.js';
@@ -21,14 +22,16 @@ import { buildGolf } from './golf3d.js';
 import { buildBaseball } from './baseball3d.js';
 import { buildBasketball } from './basketball3d.js';
 import { buildBoxing } from './boxing3d.js';
+import { buildBowling } from './bowling3d.js';
 
 import { tennis } from '../sports/tennis.js';
 import { boxing } from '../sports/boxing.js';
 import { golf } from '../sports/golf.js';
 import { baseball } from '../sports/baseball.js';
 import { basketball } from '../sports/basketball.js';
+import { bowling } from '../sports/bowling.js';
 
-const SPORTS = [tennis, boxing, golf, baseball, basketball];
+const SPORTS = [tennis, boxing, golf, baseball, basketball, bowling];
 const SCORES_KEY = 'motion-sports-highscores-v1';
 
 const view = document.querySelector('#view');
@@ -75,6 +78,7 @@ const BUILD = {
   baseball: () => buildBaseball(stage),
   basketball: () => buildBasketball(stage),
   boxing: () => buildBoxing(stage),
+  bowling: () => buildBowling(stage),
 };
 
 // Golf rebuilds its scene per hole, so the world matches the hole being played.
@@ -188,6 +192,18 @@ function drive(dt, events) {
       w.frame(stage, s.spot);
       break;
     }
+    case 'bowling': {
+      w.setPins(s.standing);
+      if (s.ball) {
+        // The hook builds as the ball runs out of speed, so it curves late.
+        const t = s.ball.t;
+        w.ballAt(s.ball.x + s.ball.hook * t * t, t);
+      } else {
+        w.park();
+      }
+      w.frame(stage);
+      break;
+    }
     case 'boxing': {
       if (s.windup > 0) w.them.play('punch', 0.4);
       else if (s.health[1] > 0) w.them.update(dt, null, { facing: Math.PI });
@@ -277,9 +293,12 @@ function drawHud(w, h, events) {
   toasts.draw(hctx, w, h);
 }
 
-// A small readout over the 3D scene: whatever this sport's state says matters.
+// The readouts over the 3D scene. Each sport shows what it measured, because
+// numbers the game used and never displayed are numbers you cannot learn from.
 function playHud(w, h) {
   const s = game.logic.state;
+  const id = game.sport.id;
+
   const lines = {
     tennis: () => [`${s.scores[0]} - ${s.scores[1]}`, s.rally > 2 ? `rally ${s.rally}` : 'first to 5'],
     boxing: () => [`${Math.round(s.health[0])}% vs ${Math.round(s.health[1])}%`,
@@ -288,13 +307,56 @@ function playHud(w, h) {
     baseball: () => [`${s.runs[0]} runs`, `${s.strikes} strike${s.strikes === 1 ? '' : 's'} · ${s.outs} out`],
     basketball: () => [`${s.scores[0]} pts`,
                        `${Math.floor(s.time / 60)}:${String(Math.floor(s.time % 60)).padStart(2, '0')}`],
-  }[game.sport.id]();
+    bowling: () => [`${s.total}`, `frame ${Math.min(10, s.frame + 1)} of 10`],
+  }[id]();
 
-  hctx.fillStyle = PALETTE.paper;
-  roundRect(hctx, w / 2 - 130, 16, 260, 62, 14);
-  hctx.fill();
-  text(hctx, lines[0], w / 2, 40, { size: 24, weight: 700, color: PALETTE.ink });
-  text(hctx, lines[1], w / 2, 64, { size: 13, color: PALETTE.inkSoft });
+  panel(hctx, w / 2 - 130, 16, 260, 62);
+  text(hctx, lines[0], w / 2, 42, { size: 24, weight: 700, color: PALETTE.ink });
+  text(hctx, lines[1], w / 2, 66, { size: 13, color: PALETTE.inkSoft });
+
+  if (id === 'golf') {
+    // The map, because on a dogleg you cannot see the green from the tee.
+    holeMap(hctx, w - 168, 92, 152, h * 0.42, game.logic.hole, s.ball,
+      game.logic.centreAt, game.logic.widthAt);
+
+    // Club and what is left to the pin.
+    panel(hctx, 18, 16, 170, 62);
+    text(hctx, s.club.name, 30, 42, { size: 22, weight: 700, align: 'left', color: PALETTE.ink });
+    text(hctx, `${s.yardsLeft ?? 0} yds to pin`, 30, 64, { size: 12, align: 'left', color: PALETTE.inkSoft });
+
+    windDial(hctx, 66, 122, 26, s.wind);
+
+    if (s.lastShot) {
+      swingBar(hctx, 18, 170, 190, {
+        power: s.lastShot.carryYards / Math.max(1, game.logic.hole.length),
+        faceDeg: s.lastShot.faceDeg,
+      });
+      readout(hctx, 18, 256, 190, [
+        ['club', s.lastShot.club],
+        ['hand speed', `${s.lastShot.speedMph} mph`],
+        ['carry', `${s.lastShot.carryYards} yds`],
+        ['shape', s.lastShot.shape],
+        ['wind', `${s.lastShot.windEffect > 0 ? '+' : ''}${s.lastShot.windEffect} yds`],
+      ]);
+    }
+  }
+
+  // Every other sport shows its own last measurement, where it has one.
+  if (s.lastHit) {
+    const rows = {
+      tennis: () => [['swing speed', `${s.lastHit.speedMph} mph`], ['shot', s.lastHit.shot],
+                     ['timing', s.lastHit.timing]],
+      baseball: () => [['bat speed', `${s.lastHit.speedMph} mph`], ['timing', s.lastHit.timing],
+                       ['contact', s.lastHit.contact]],
+      basketball: () => [['release', `${s.lastHit.speedMph} mph`], ['arc', s.lastHit.arc],
+                         ['result', s.lastHit.result]],
+      boxing: () => [['punch', s.lastHit.side], ['speed', `${s.lastHit.speedMph} mph`],
+                     ['depth', s.lastHit.depth]],
+      bowling: () => [['ball speed', `${s.lastHit.speedMph} mph`], ['line', s.lastHit.line],
+                      ['hook', s.lastHit.hook], ['pins', s.lastHit.pins]],
+    }[id];
+    if (rows) readout(hctx, 18, h - 150, 190, rows(), 'last hit');
+  }
 
   text(hctx, 'both arms overhead to quit', w / 2, h - 18, { size: 12, color: PALETTE.inkSoft });
   toasts.draw(hctx, w, h);

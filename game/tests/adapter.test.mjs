@@ -9,6 +9,7 @@ import { boxing } from '../sports/boxing.js';
 import { golf } from '../sports/golf.js';
 import { baseball } from '../sports/baseball.js';
 import { basketball } from '../sports/basketball.js';
+import { bowling } from '../sports/bowling.js';
 
 let pass = 0, fail = 0;
 const ok = (name, cond, detail = '') => {
@@ -44,9 +45,11 @@ const READS = {
                   s.pitch ? [s.pitch.t, s.pitch.duration, s.pitch.x, s.pitch.curve] : 0],
   basketball: s => [s.scores[0], s.spot, s.time,
                     s.shot ? [s.shot.t, s.shot.arc, s.shot.good, s.shot.off] : 0],
+  bowling: s => [s.total, s.frame, s.standing.length,
+                 s.ball ? [s.ball.t, s.ball.x, s.ball.hook] : 0],
 };
 
-for (const sport of [tennis, boxing, golf, baseball, basketball]) {
+for (const sport of [tennis, boxing, golf, baseball, basketball, bowling]) {
   console.log(`\n${sport.label}`);
   const scene = sport.create({ input, toasts, twoPlayer: false, difficulty: 1 });
   ok('exposes state', !!scene.state);

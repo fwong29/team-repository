@@ -21,8 +21,9 @@ import { boxing } from './sports/boxing.js';
 import { golf } from './sports/golf.js';
 import { baseball } from './sports/baseball.js';
 import { basketball } from './sports/basketball.js';
+import { bowling } from './sports/bowling.js';
 
-const SPORTS = [tennis, boxing, golf, baseball, basketball];
+const SPORTS = [tennis, boxing, golf, baseball, basketball, bowling];
 const SCORES_KEY = 'motion-sports-highscores-v1';
 const SEEN_KEY = 'motion-sports-seen-v1';
 
