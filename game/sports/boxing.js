@@ -24,11 +24,18 @@ export const boxing = {
   icon(ctx, x, y, r) {
     ctx.save();
     ctx.fillStyle = PALETTE.ink;
-    roundRect(ctx, x - r * 0.6, y - r * 0.5, r * 1.2, r, r * 0.4);
+    roundRect(ctx, x - r * 0.5, y - r * 0.62, r * 1.0, r * 0.95, r * 0.34);  // the fist
     ctx.fill();
-    ctx.fillStyle = PALETTE.night;
-    roundRect(ctx, x - r * 0.15, y - r * 0.5, r * 0.3, r * 0.4, r * 0.1);
+    roundRect(ctx, x - r * 0.84, y - r * 0.2, r * 0.42, r * 0.46, r * 0.2);  // the thumb
     ctx.fill();
+    roundRect(ctx, x - r * 0.46, y + r * 0.3, r * 0.92, r * 0.34, r * 0.12); // the cuff
+    ctx.fill();
+    ctx.strokeStyle = PALETTE.night;
+    ctx.lineWidth = r * 0.12;
+    ctx.beginPath();                                                         // knuckle seam
+    ctx.moveTo(x - r * 0.28, y - r * 0.5);
+    ctx.lineTo(x - r * 0.28, y + r * 0.18);
+    ctx.stroke();
     ctx.restore();
   },
 

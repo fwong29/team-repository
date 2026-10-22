@@ -147,12 +147,15 @@ function finishSport() {
 // Menu layout, rebuilt each frame so it follows the window size.
 function menuLayout(w, h) {
   const tiles = menuTiles(SPORTS.map(s => ({ id: s.id, label: s.label, note: s.note, icon: s.icon })),
-    w, h, { columns: 3, top: 0.3 });
-  const bottomY = h * 0.84;
+    w, h, { columns: 3, top: 0.26, maxWidth: 205 });
+  // The bottom row sits under whatever the tiles actually came out as. A fixed
+  // fraction of the height collides with the second row on a short window.
+  const below = Math.max(...tiles.map(t => t.y + t.h));
+  const bottomY = Math.min(h - 74, below + 20);
   tiles.push(
-    { id: 'mode', label: game.mode === 'solo' ? 'Solo' : 'Two players', x: w * 0.12, y: bottomY, w: w * 0.2, h: 54 },
-    { id: 'difficulty', label: ['Easy', 'Normal', 'Hard'][game.difficulty], x: w * 0.4, y: bottomY, w: w * 0.2, h: 54 },
-    { id: 'settings', label: 'Settings', x: w * 0.68, y: bottomY, w: w * 0.2, h: 54 },
+    { id: 'mode', label: game.mode === 'solo' ? 'Solo' : 'Two players', x: w * 0.12, y: bottomY, w: w * 0.2, h: 50 },
+    { id: 'difficulty', label: ['Easy', 'Normal', 'Hard'][game.difficulty], x: w * 0.4, y: bottomY, w: w * 0.2, h: 50 },
+    { id: 'settings', label: 'Settings', x: w * 0.68, y: bottomY, w: w * 0.2, h: 50 },
   );
   return tiles;
 }

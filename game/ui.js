@@ -142,8 +142,12 @@ export class Cursor {
 
 // ---- Menus ------------------------------------------------------------------
 
-export function menuTiles(items, w, h, { columns = 3, top = 0.34 } = {}) {
-  const tileW = Math.min(240, (w * 0.82) / columns - 18);
+export function menuTiles(items, w, h, { columns = 3, top = 0.34, maxWidth = 240 } = {}) {
+  const rowsNeeded = Math.ceil(items.length / columns);
+  // Also capped by the height left below `top`, so a short window shrinks the
+  // tiles instead of pushing the last row off the screen.
+  const byHeight = ((h * (0.96 - top)) / rowsNeeded - 18) / 0.72;
+  const tileW = Math.min(maxWidth, (w * 0.82) / columns - 18, byHeight);
   const tileH = tileW * 0.72;
   const rows = Math.ceil(items.length / columns);
   const totalW = columns * tileW + (columns - 1) * 18;
