@@ -6,7 +6,7 @@
 // real punch from an arm waved about. Hands up by the face is a guard; leaning
 // hard to one side is a dodge.
 
-import { PALETTE, text, drawMeter, roundRect } from '../ui.js';
+import { PALETTE, text, drawMeter, roundRect, drawAvatar } from '../ui.js';
 import { layer, crowd, rng, figure, groundShadow, vignette, speckle, flashes } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { Sound } from '../audio.js';
@@ -313,8 +313,8 @@ export const boxing = {
 
         // The opponent, bobbing, and winding up in red when an attack is coming.
         const bobY = Math.sin(state.bob) * 8;
-        const cx = w / 2 + (state.windup > 0 ? state.attackSide * 26 * (1 - state.windup) : 0);
-        const cy = h * 0.40 + bobY;
+        const cx = w * 0.64 + (state.windup > 0 ? state.attackSide * 26 * (1 - state.windup) : 0);
+        const cy = h * 0.44 + bobY;
         ctx.save();
         if (state.hitFlash > 0) {
           ctx.globalAlpha = 1;
@@ -382,47 +382,46 @@ export const boxing = {
         }
         ctx.restore();
 
-        // Your own gloves, bottom of frame, following your real hands. First
-        // person is the right camera for a punching game: you look at the
-        // opponent, not at a figure of yourself.
+        // You, from behind and large in the lower left, with the challenger
+        // ahead and to the right — the same over-the-shoulder camera the rest
+        // of the game uses.
         const me = input.player(0);
         const guard = guarding(me);
+        const youX = w * 0.3;
+        const youY = h * 1.12;
+        const youH = h * 0.78;
+        if (me?.ok) drawAvatar(ctx, me, { x: youX, y: youY, height: youH, back: true });
+
+        // Gloves on your own hands, so a punch is something you watch land.
         for (const side of ['left', 'right']) {
           const hand = me?.ok ? me.hands[side] : null;
-          const home = side === 'left' ? w * 0.22 : w * 0.78;
-          // The hand's travel across the camera maps to the bottom of the
-          // screen; punching pushes the glove up the frame and swells it.
-          const reach = me?.ok ? clamp(hand.extension, 0, 1.2) : 0.3;
-          const gx = hand && hand.visible
-            ? lerp(home, w * 0.5 + (side === 'left' ? -w * 0.1 : w * 0.1), reach * 0.55)
-            : home;
-          const gy = guard ? h * 0.62 : h * (0.96 - reach * 0.26);
-          const size = h * (0.1 + reach * 0.07);
+          const out = hand ? clamp(hand.extension, 0, 1.2) : 0.3;
+          // Placed on the tracked wrist, mapped into the figure's own space,
+          // so the glove is where your hand actually is.
+          const lateral = side === 'left' ? -1 : 1;
+          const gx = me?.ok && hand
+            ? youX + (hand.x - me.centre.x) * (youH / Math.max(0.05, me.calib.shoulderSpan)) * 0.55
+            : youX + lateral * youH * 0.22;
+          const gy = me?.ok && hand
+            ? youY - youH * 0.62 + (hand.y - me.centre.y) * (youH / Math.max(0.05, me.calib.shoulderSpan)) * 0.55
+            : youY - youH * 0.5;
+          const size = youH * (0.1 + out * 0.03);
 
-          ctx.save();
-          ctx.fillStyle = 'rgba(45,59,69,0.12)';
-          ctx.beginPath();
-          ctx.ellipse(gx, gy + size * 0.9, size * 0.9, size * 0.22, 0, 0, Math.PI * 2);
-          ctx.fill();
           const lit = ctx.createRadialGradient(gx - size * 0.3, gy - size * 0.35, size * 0.1, gx, gy, size * 1.2);
-          lit.addColorStop(0, '#ffb14e');
-          lit.addColorStop(1, '#e07a1c');
+          lit.addColorStop(0, '#79c0f5');
+          lit.addColorStop(1, '#3f7fc0');
           ctx.fillStyle = lit;
           ctx.beginPath();
           ctx.arc(gx, gy, size, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = '#c96a12';                     // the cuff
-          roundRect(ctx, gx - size * 0.62, gy + size * 0.6, size * 1.24, size * 0.5, size * 0.22);
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';                   // laces
-          ctx.lineWidth = Math.max(2, size * 0.09);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = Math.max(2, size * 0.1);
           for (let i = -1; i <= 1; i++) {
             ctx.beginPath();
-            ctx.moveTo(gx - size * 0.28, gy + i * size * 0.26);
-            ctx.lineTo(gx + size * 0.28, gy + i * size * 0.26);
+            ctx.moveTo(gx - size * 0.3, gy + i * size * 0.28);
+            ctx.lineTo(gx + size * 0.3, gy + i * size * 0.28);
             ctx.stroke();
           }
-          ctx.restore();
         }
 
         this.foreground(ctx, w, h);

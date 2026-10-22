@@ -5,7 +5,7 @@
 // moves further away each time you make one, so a shot that worked once will
 // not keep working.
 
-import { PALETTE, text, drawMeter, roundRect } from '../ui.js';
+import { PALETTE, text, drawMeter, roundRect, drawAvatar } from '../ui.js';
 import { layer, stand, hardwood, scoreboard } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { Sound } from '../audio.js';
@@ -239,16 +239,22 @@ export const basketball = {
           ctx.restore();
         }
 
-        // The ball in your own hands at the bottom of frame, rising as you
-        // load the shot. First person, like the rest of the game.
+        // You from behind, with the ball coming up over your head as you load
+        // the shot and the hoop in front of you.
         const shooter = input.player(twoPlayer ? state.turn : 0);
         if (!state.shot) {
           const lift = shooter?.ok
             ? clamp((0.6 - (shooter.hands.left.y + shooter.hands.right.y) / 2) * 2.2)
             : 0;
-          const bx = hoopX + (shooter?.ok ? shooter.lean * w * 0.05 : 0);
-          const by = h * (1.0 - lift * 0.22);
-          const br = h * 0.085;
+          const youX = hoopX - w * 0.07 + (shooter?.ok ? shooter.lean * w * 0.04 : 0);
+          const youH = h * 0.56;
+          if (shooter?.ok) {
+            drawAvatar(ctx, shooter, { x: youX, y: shooterY + youH * 0.06, height: youH, back: true });
+          }
+
+          const bx = youX + w * 0.015;
+          const by = shooterY + youH * 0.06 - youH * (0.86 + lift * 0.22);
+          const br = youH * 0.14;
           const held = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.35, br * 0.1, bx, by, br * 1.2);
           held.addColorStop(0, '#ffa95e');
           held.addColorStop(1, '#e07c2c');
@@ -266,13 +272,6 @@ export const basketball = {
           ctx.beginPath();
           ctx.ellipse(bx, by, br * 0.42, br, 0, 0, Math.PI * 2);
           ctx.stroke();
-          // Two hands cupping it from underneath.
-          ctx.fillStyle = '#ffd9b8';
-          for (const side of [-1, 1]) {
-            ctx.beginPath();
-            ctx.ellipse(bx + side * br * 0.86, by + br * 0.3, br * 0.34, br * 0.46, side * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-          }
         }
 
         // Distance and the push it needs, down the left so the shooter is not

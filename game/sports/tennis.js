@@ -311,9 +311,9 @@ export const tennis = {
         // front of you — the camera sits over your shoulder.
         const body = input.player(0);
         const rightHanded = CONFIG.handedness !== 'left';
-        const youX = w * (rightHanded ? 0.38 : 0.62);
-        const youY = nearY + h * 0.16;
-        const youH = h * 0.42;
+        const youX = w * (rightHanded ? 0.33 : 0.67);
+        const youY = h * 1.04;
+        const youH = h * 0.6;
         if (body?.ok) drawAvatar(ctx, body, { x: youX, y: youY, height: youH, back: true });
 
         // The racket, held in the playing hand and swung with it.

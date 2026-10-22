@@ -283,38 +283,51 @@ export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  // Legs and torso first, so the arms sit on top of them.
-  ctx.strokeStyle = '#45586a';
-  ctx.lineWidth = height * 0.055;
-  for (const [a, b] of [[L.leftHip, L.leftKnee], [L.leftKnee, L.leftAnkle],
-                        [L.rightHip, L.rightKnee], [L.rightKnee, L.rightAnkle]]) {
-    if (!j[a] || !j[b]) continue;
+  // One limb width for the whole figure: thick and short, so the silhouette
+  // reads as a chunky cartoon rather than a stick.
+  const limb = height * 0.105;
+
+  const bone = (a, b, width, colour) => {
+    if (!j[a] || !j[b]) return;
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
     ctx.beginPath();
     ctx.moveTo(px(j[a]), py(j[a]));
     ctx.lineTo(px(j[b]), py(j[b]));
     ctx.stroke();
-  }
+  };
 
-  if (j[L.leftShoulder] && j[L.rightShoulder] && j[L.leftHip] && j[L.rightHip]) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(px(j[L.leftShoulder]), py(j[L.leftShoulder]));
-    ctx.lineTo(px(j[L.rightShoulder]), py(j[L.rightShoulder]));
-    ctx.lineTo(px(j[L.rightHip]), py(j[L.rightHip]));
-    ctx.lineTo(px(j[L.leftHip]), py(j[L.leftHip]));
-    ctx.closePath();
+  // Legs, then shoes planted on the ground.
+  for (const [a, b] of [[L.leftHip, L.leftKnee], [L.leftKnee, L.leftAnkle],
+                        [L.rightHip, L.rightKnee], [L.rightKnee, L.rightAnkle]]) {
+    bone(a, b, limb * 1.05, '#45586a');
+  }
+  for (const ankle of [L.leftAnkle, L.rightAnkle]) {
+    if (!j[ankle]) continue;
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, px(j[ankle]) - limb * 0.8, py(j[ankle]) - limb * 0.3,
+      limb * 1.7, limb * 0.9, limb * 0.42);
     ctx.fill();
   }
 
-  ctx.strokeStyle = color;
-  ctx.lineWidth = height * 0.05;
+  // Torso: one wide capsule from the shoulders to the hips.
+  if (j[L.leftShoulder] && j[L.rightShoulder] && j[L.leftHip] && j[L.rightHip]) {
+    const sx = (px(j[L.leftShoulder]) + px(j[L.rightShoulder])) / 2;
+    const sy = (py(j[L.leftShoulder]) + py(j[L.rightShoulder])) / 2;
+    const hx2 = (px(j[L.leftHip]) + px(j[L.rightHip])) / 2;
+    const hy2 = (py(j[L.leftHip]) + py(j[L.rightHip])) / 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = height * 0.26;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy + height * 0.015);
+    ctx.lineTo(hx2, hy2);
+    ctx.stroke();
+  }
+
+  // Arms in the shirt colour.
   for (const [a, b] of [[L.leftShoulder, L.leftElbow], [L.leftElbow, L.leftWrist],
                         [L.rightShoulder, L.rightElbow], [L.rightElbow, L.rightWrist]]) {
-    if (!j[a] || !j[b]) continue;
-    ctx.beginPath();
-    ctx.moveTo(px(j[a]), py(j[a]));
-    ctx.lineTo(px(j[b]), py(j[b]));
-    ctx.stroke();
+    bone(a, b, limb * 1.1, color);
   }
 
   // Hands.
@@ -322,7 +335,7 @@ export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue
   for (const w of [L.leftWrist, L.rightWrist]) {
     if (!j[w]) continue;
     ctx.beginPath();
-    ctx.arc(px(j[w]), py(j[w]), height * 0.034, 0, Math.PI * 2);
+    ctx.arc(px(j[w]), py(j[w]), limb * 0.72, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -333,13 +346,13 @@ export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue
     const neckX = (px(j[L.leftShoulder]) + px(j[L.rightShoulder])) / 2;
     const neckY = (py(j[L.leftShoulder]) + py(j[L.rightShoulder])) / 2;
     const hx = px(nose), hy = py(nose);
-    const r = height * 0.1;
+    const r = height * 0.15;
 
     ctx.strokeStyle = skin;
-    ctx.lineWidth = height * 0.045;
+    ctx.lineWidth = height * 0.075;
     ctx.beginPath();
     ctx.moveTo(neckX, neckY);
-    ctx.lineTo(hx, hy);
+    ctx.lineTo(hx, hy + r * 0.45);
     ctx.stroke();
 
     ctx.fillStyle = skin;

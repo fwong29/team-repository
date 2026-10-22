@@ -509,8 +509,8 @@ export const golf = {
           const ground = project(state.ball.along, state.ball.off);
           const rightHanded = CONFIG.handedness !== 'left';
           const side = rightHanded ? -1 : 1;
-          const youH = h * 0.4 * Math.max(0.35, ground.s);
-          const youX = ground.x + side * youH * 0.55;
+          const youH = h * 0.62 * Math.max(0.42, ground.s);
+          const youX = ground.x + side * youH * 0.42;
           const youY = ground.y + youH * 0.06;
 
           if (body?.ok) drawAvatar(ctx, body, { x: youX, y: youY, height: youH, back: true });
