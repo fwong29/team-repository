@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Sports — mock harness</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0b0d; overflow: hidden;
+                 font-family: system-ui, sans-serif; }
+    #stage { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+    #bar { position: fixed; left: 12px; top: 12px; z-index: 2; display: flex; gap: 6px; flex-wrap: wrap; }
+    button { font: 12px system-ui; padding: 6px 11px; border-radius: 6px; cursor: pointer;
+             border: 1px solid rgba(242,239,233,.3); background: rgba(0,0,0,.5); color: #f2efe9; }
+    button.on { background: #e7c15c; color: #0b0b0d; border-color: #e7c15c; }
+  </style>
+</head>
+<body>
+  <!--
+    The mock harness. No camera, no Arduino: a scripted body and a scripted
+    distance drive the same sports the real game runs, so the game logic and
+    the drawing can be worked on anywhere — on a train, with no hardware, or
+    in a headless browser on a build machine.
+
+    Buttons fire the same events the input layer emits. This page is a test
+    tool and is not part of the game.
+  -->
+  <canvas id="stage"></canvas>
+  <div id="bar"></div>
+
+  <script type="module">
+    import { Toasts, Cursor } from '../ui.js';
+    import { L } from '../tracker.js';
+    import { tennis } from '../sports/tennis.js';
+    import { boxing } from '../sports/boxing.js';
+    import { golf } from '../sports/golf.js';
+    import { baseball } from '../sports/baseball.js';
+    import { basketball } from '../sports/basketball.js';
+
+    const SPORTS = { tennis, boxing, golf, baseball, basketball };
+    const canvas = document.querySelector('#stage');
+    const ctx = canvas.getContext('2d');
+    const toasts = new Toasts();
+
+    function resize() {
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      canvas.width = innerWidth * dpr;
+      canvas.height = innerHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    addEventListener('resize', resize);
+    resize();
+
+    // A stand-in body, posed mid-swing so the figure is not just standing there.
+    function mockBody(t = 0) {
+      const j = {};
+      for (const i of Object.values(L)) j[i] = { x: 0.5, y: 0.5, z: 0, v: 0.9 };
+      const sway = Math.sin(t * 1.6) * 0.03;
+      const put = (i, x, y) => { j[i] = { x: x + sway, y, z: 0, v: 0.9 }; };
+      put(L.nose, 0.5, 0.23);
+      put(L.leftShoulder, 0.43, 0.34);  put(L.rightShoulder, 0.57, 0.34);
+      put(L.leftElbow, 0.37, 0.44);     put(L.rightElbow, 0.64, 0.42);
+      put(L.leftWrist, 0.33, 0.53);     put(L.rightWrist, 0.70 + sway * 2, 0.34);
+      put(L.leftHip, 0.45, 0.60);       put(L.rightHip, 0.55, 0.60);
+      put(L.leftKnee, 0.44, 0.76);      put(L.rightKnee, 0.56, 0.76);
+      put(L.leftAnkle, 0.44, 0.90);     put(L.rightAnkle, 0.56, 0.90);
+      const hand = up => ({ x: 0.5, y: up ? 0.3 : 0.5, vx: 0, vy: 0, speed: 0,
+        extension: 0.6, up, visible: true, acrossBody: 0.2, elbowAngle: 130 });
+      return { ok: true, joints: j, scale: 0.14, centre: { x: 0.5 + sway, y: 0.34 },
+        lean: sway * 6, turn: 0, hands: { left: hand(false), right: hand(true) },
+        calib: { shoulderSpan: 0.14, armLength: 0.22, neutralCm: 150 } };
+    }
+
+    let clock = 0;
+    const input = {
+      calib: { shoulderSpan: 0.14, armLength: 0.22, neutralCm: 150 },
+      distanceCm: 148, distanceFrom: 'mock', depth01: 0.5, playerCount: 1,
+      player: () => mockBody(clock),
+    };
+
+    let current = new URLSearchParams(location.search).get('scene') || 'tennis';
+    let scene = null;
+    let queued = [];
+
+    function load(id) {
+      current = id;
+      scene = SPORTS[id].create({ input, toasts, twoPlayer: false, difficulty: 1 });
+      for (const b of document.querySelectorAll('#bar button[data-sport]')) {
+        b.classList.toggle('on', b.dataset.sport === id);
+      }
+    }
+
+    // The same event shapes input.js emits, fired by hand.
+    const FAKE = {
+      swing: () => ({ type: 'swing', side: 'right', speed: 5, power: 0.65, dirX: -1, dirY: 0,
+        plane: 'horizontal', across: 0.4, apex: 0.3, angle: 178, player: 0 }),
+      'swing up': () => ({ type: 'swing', side: 'right', speed: 4.4, power: 0.6, dirX: 1, dirY: -1,
+        plane: 'vertical', across: 0.3, apex: 0.2, angle: -72, player: 0 }),
+      punch: () => ({ type: 'punch', side: 'right', power: 0.75, extension: 1, depth: 0.5, high: true, player: 0 }),
+      shoot: () => ({ type: 'shoot', power: 0.6, arc: 0.55, reach: 1, player: 0 }),
+    };
+
+    const bar = document.querySelector('#bar');
+    for (const id of Object.keys(SPORTS)) {
+      const b = document.createElement('button');
+      b.textContent = id;
+      b.dataset.sport = id;
+      b.onclick = () => load(id);
+      bar.append(b);
+    }
+    for (const [label, make] of Object.entries(FAKE)) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.onclick = () => queued.push(make());
+      bar.append(b);
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      clock += dt;
+      const dpr = Math.min(2, devicePixelRatio || 1);
+      const w = canvas.width / dpr, h = canvas.height / dpr;
+
+      ctx.fillStyle = '#0b0b0d';
+      ctx.fillRect(0, 0, w, h);
+      if (scene) {
+        scene.update(dt, now, queued);
+        scene.draw(ctx, w, h);
+        if (scene.done) load(current);
+      }
+      queued = [];
+      toasts.draw(ctx, w, h);
+      requestAnimationFrame(frame);
+    }
+    load(current);
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
