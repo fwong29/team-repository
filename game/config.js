@@ -8,6 +8,11 @@
 export const CONFIG = {
   camera: { width: 640, height: 480 },
 
+  // Which side the racket, bat and club are held on. Every sport reads this
+  // rather than assuming; 'left' mirrors all of them.
+  handedness: 'right',
+
+
   // The HC-SR04 half. The sketch in firmware/hcsr04.ino prints "cm 42.5".
   serial: {
     baud: 115200,        // must match Serial.begin() in the sketch

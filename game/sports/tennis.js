@@ -5,9 +5,10 @@
 // toward or away from the screen — the HC-SR04's job — moves you up and down
 // the court, which changes how early you have to swing.
 
-import { PALETTE, text, drawScorebar, drawMeter, drawAvatar, roundRect } from '../ui.js';
+import { PALETTE, text, drawScorebar, drawMeter, roundRect, drawAvatar } from '../ui.js';
 import { layer, stand, scoreboard } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
+import { CONFIG } from '../config.js';
 import { Sound } from '../audio.js';
 
 const WIN = 5;
@@ -175,12 +176,12 @@ export const tennis = {
           const backY = h * 0.14;
 
           // Stands wrapping the back of the court.
-          c.fillStyle = '#1a1f28';
+          c.fillStyle = '#dfeaf1';
           c.fillRect(0, 0, w, backY);
-          stand(c, 0, 0, w, backY * 0.92, { seed: 101, rows: 6, deck: '#232834', dim: 0.08 });
+          stand(c, 0, 0, w, backY * 0.92, { seed: 101, rows: 6, deck: '#cfdde8' });
 
           // The surround, then the court itself inside it.
-          c.fillStyle = '#2e6a4f';
+          c.fillStyle = '#74b84b';
           c.fillRect(0, backY, w, h - backY);
 
           // Court corners, near wide and far narrow.
@@ -189,7 +190,7 @@ export const tennis = {
             x: lerp(lerp(nx0, nx1, u), lerp(fx0, fx1, u), t),
             y: lerp(h * 1.0, backY + h * 0.02, t),
           });
-          c.fillStyle = '#3f6f9e';
+          c.fillStyle = '#5aa0dd';
           c.beginPath();
           const a = at(0, 0), b = at(0, 1), d = at(1, 1), e = at(1, 0);
           c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y);
@@ -240,19 +241,19 @@ export const tennis = {
           c.restore();
           c.fillStyle = '#f2efe9';                      // the band
           c.fillRect(netL.x, netTop, netR.x - netL.x, h * 0.014);
-          c.fillStyle = '#2a2f3a';                      // posts
+          c.fillStyle = '#8ea4b2';                      // posts
           c.fillRect(netL.x - 7, netTop, 7, h * 0.1);
           c.fillRect(netR.x, netTop, 7, h * 0.1);
 
           // Umpire's chair, off to one side.
           const chairX = netR.x + w * 0.05;
-          c.fillStyle = '#2a2f3a';
+          c.fillStyle = '#b4c7d6';
           c.fillRect(chairX - 4, netTop - h * 0.1, 8, h * 0.19);
           c.fillRect(chairX + 20, netTop - h * 0.1, 8, h * 0.19);
-          c.fillStyle = '#39414f';
+          c.fillStyle = '#5aa8ea';
           roundRect(c, chairX - 10, netTop - h * 0.14, 44, h * 0.05, 5);
           c.fill();
-          c.fillStyle = '#f0cba8';
+          c.fillStyle = '#ffd9b8';
           c.beginPath();
           c.arc(chairX + 12, netTop - h * 0.155, 9, 0, Math.PI * 2);
           c.fill();
@@ -305,19 +306,57 @@ export const tennis = {
         ctx.restore();
 
         const nearY = h * (0.82 - state.court * 0.2);
+
+        // You, seen from behind and set off to one side, with the court in
+        // front of you — the camera sits over your shoulder.
         const body = input.player(0);
-        if (body?.ok) drawAvatar(ctx, body, { x: w * 0.5, y: nearY + h * 0.1, height: h * 0.26 });
-        else {
-          ctx.fillStyle = PALETTE.blue;
+        const rightHanded = CONFIG.handedness !== 'left';
+        const youX = w * (rightHanded ? 0.38 : 0.62);
+        const youY = nearY + h * 0.16;
+        const youH = h * 0.42;
+        if (body?.ok) drawAvatar(ctx, body, { x: youX, y: youY, height: youH, back: true });
+
+        // The racket, held in the playing hand and swung with it.
+        const hand = body?.ok ? (rightHanded ? body.hands.right : body.hands.left) : null;
+        const swing = hand ? clamp(hand.vx * (rightHanded ? 0.3 : -0.3), -1, 1) : 0;
+        const side = rightHanded ? 1 : -1;
+        const rx = youX + side * youH * (0.3 + swing * 0.3);
+        const ry = youY - youH * (0.52 + (hand ? clamp((0.6 - hand.y) * 1.2) : 0.1) * 0.2);
+        ctx.save();
+        ctx.translate(rx, ry);
+        ctx.rotate(side * (0.5 - swing * 1.1));
+        ctx.strokeStyle = '#2d3b45';
+        ctx.lineWidth = youH * 0.05;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, youH * 0.22);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
+        ctx.fillStyle = '#f7fbfd';
+        ctx.beginPath();
+        ctx.ellipse(0, -youH * 0.14, youH * 0.14, youH * 0.19, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2d3b45';
+        ctx.lineWidth = youH * 0.028;
+        ctx.beginPath();
+        ctx.ellipse(0, -youH * 0.14, youH * 0.14, youH * 0.19, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(45,59,69,0.28)';
+        ctx.lineWidth = 1.2;
+        for (let i = -2; i <= 2; i++) {
           ctx.beginPath();
-          ctx.arc(w * 0.5, nearY, 20, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(i * youH * 0.045, -youH * 0.32);
+          ctx.lineTo(i * youH * 0.045, youH * 0.04);
+          ctx.moveTo(-youH * 0.135, -youH * 0.14 + i * youH * 0.06);
+          ctx.lineTo(youH * 0.135, -youH * 0.14 + i * youH * 0.06);
+          ctx.stroke();
         }
+        ctx.restore();
 
         // The hitting band, so the timing is something you can see and learn.
-        ctx.strokeStyle = 'rgba(231,193,92,0.35)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
         ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
+        ctx.setLineDash([10, 10]);
         ctx.beginPath();
         ctx.moveTo(w * 0.12, nearY - h * 0.22);
         ctx.lineTo(w * 0.88, nearY - h * 0.22);
@@ -350,8 +389,11 @@ export const tennis = {
           { name: twoPlayer ? 'Player 2' : 'Computer', score: state.scores[1] });
         if (state.rally > 2) text(ctx, `Rally ${state.rally}`, w / 2, 92, { size: 15, color: PALETTE.dim });
 
-        drawMeter(ctx, 24, h - 44, 160, 14, state.court, PALETTE.blue);
-        text(ctx, 'court position', 104, h - 58, { size: 11, color: PALETTE.dim });
+        ctx.fillStyle = PALETTE.paper;
+        roundRect(ctx, 18, h - 70, 180, 54, 12);
+        ctx.fill();
+        drawMeter(ctx, 30, h - 40, 156, 14, state.court, PALETTE.blue);
+        text(ctx, 'court position', 108, h - 52, { size: 11, color: PALETTE.inkSoft });
         if (state.serveIn > 0) text(ctx, 'Get ready', w / 2, h * 0.42, { size: 42, weight: 700 });
       },
     };

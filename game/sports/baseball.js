@@ -6,8 +6,10 @@
 // vertical plane is a golf swing, and misses on purpose.
 
 import { PALETTE, text, roundRect, drawAvatar } from '../ui.js';
-import { layer, sky, clouds, stand, crowd, floodlight, mownStripes, scoreboard } from '../scenery.js';
+import { layer, sky, clouds, stand, crowd, floodlight, mownStripes, scoreboard,
+         figure, groundShadow, vignette, speckle, banners, birds } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
+import { CONFIG } from '../config.js';
 import { Sound } from '../audio.js';
 
 export const baseball = {
@@ -180,18 +182,31 @@ export const baseball = {
         return layer('ballpark', w, h, (c) => {
           const horizon = h * 0.30;
 
-          sky(c, w, horizon, '#2f4668', '#8a7f8e');
+          sky(c, w, horizon, '#7fcdf0', '#dcf1fb');
           clouds(c, w, horizon, 12, 6);
 
-          // Outfield stands, wrapping the back of the park.
-          stand(c, 0, horizon * 0.22, w, horizon * 0.72, { seed: 21, rows: 9, deck: '#272c35' });
-          floodlight(c, w * 0.14, horizon * 0.1, h * 0.022);
-          floodlight(c, w * 0.86, horizon * 0.1, h * 0.022);
+          // Outfield stands, wrapping the back of the park, with banners over
+          // the front rail.
+          stand(c, 0, horizon * 0.22, w, horizon * 0.72, { seed: 21, rows: 9, deck: '#cfdde8' });
+          banners(c, 0, horizon * 0.86, w, horizon * 0.09, { seed: 14, count: 9 });
+          floodlight(c, w * 0.1, horizon * 0.06, h * 0.022);
+          floodlight(c, w * 0.9, horizon * 0.06, h * 0.022);
+          floodlight(c, w * 0.32, horizon * 0.02, h * 0.018);
+          floodlight(c, w * 0.68, horizon * 0.02, h * 0.018);
+
+          // The big board above the stands in centre field.
+          const boardW = w * 0.2, boardX = w / 2 - boardW / 2;
+          c.fillStyle = '#e4edf3';
+          c.fillRect(boardX - 6, horizon * 0.1, boardW + 12, horizon * 0.36);
+          scoreboard(c, boardX, horizon * 0.12, boardW, horizon * 0.3,
+            ['HOME  AWAY', '1 2 3 4 5 6 7 8 9']);
+          c.fillStyle = '#c6d6e2';
+          c.fillRect(w / 2 - 5, horizon * 0.46, 10, horizon * 0.12);
 
           // The outfield wall, padded, with a yellow home-run line on top.
           const wallY = horizon * 0.94;
           const wallH = h * 0.055;
-          c.fillStyle = '#1f4a33';
+          c.fillStyle = '#4f9e5e';
           c.fillRect(0, wallY, w, wallH);
           c.strokeStyle = 'rgba(255,255,255,0.1)';
           c.lineWidth = 1;
@@ -204,23 +219,39 @@ export const baseball = {
           c.fillStyle = '#e7c15c';
           c.fillRect(0, wallY, w, 3);
 
-          // Grass, mown in bands that narrow toward the wall.
+          // Grass, mown in bands that narrow toward the wall, then a dirt
+          // warning track along the foot of it so the wall is not a hard edge.
           const fieldY = wallY + wallH;
-          mownStripes(c, 0, fieldY, w, h - fieldY, { bands: 11, light: '#4f8f5a', dark: '#44804e' });
+          mownStripes(c, 0, fieldY, w, h - fieldY, { bands: 11, light: '#8ccc5c', dark: '#7cc04d' });
+          c.fillStyle = '#e0b081';
+          c.fillRect(0, fieldY, w, h * 0.022);
+          
+
+          // Foul poles at the corners of the wall.
+          for (const fx of [w * 0.035, w * 0.965]) {
+            c.fillStyle = '#e7c15c';
+            c.fillRect(fx - 3, horizon * 0.52, 6, fieldY - horizon * 0.52);
+          }
+
+          // Bullpen benches beyond the outfield grass.
+          for (const bx of [w * 0.1, w * 0.78]) {
+            c.fillStyle = '#cfdde8';
+            c.fillRect(bx, fieldY + h * 0.03, w * 0.12, h * 0.012);
+            for (let i = 0; i < 3; i++) {
+              figure(c, bx + w * 0.025 + i * w * 0.035, fieldY + h * 0.03, h * 0.045,
+                { shirt: '#ffffff', pants: '#cdd9e4', cap: '#5aa8ea' });
+            }
+          }
 
           // Infield dirt, the mound, and the base paths.
-          c.fillStyle = '#b4643c';
+          c.fillStyle = '#e49c66';
           c.beginPath();
-          c.ellipse(w / 2, h * 0.92, w * 0.44, h * 0.30, 0, 0, Math.PI * 2);
-          c.fill();
-          c.fillStyle = '#4f8f5a';
-          c.beginPath();
-          c.ellipse(w / 2, h * 0.95, w * 0.30, h * 0.20, 0, 0, Math.PI * 2);
+          c.ellipse(w * 0.47, h * 0.98, w * 0.6, h * 0.36, 0, 0, Math.PI * 2);
           c.fill();
 
-          c.fillStyle = '#b4643c';
+          c.fillStyle = '#e49c66';
           c.beginPath();
-          c.ellipse(w / 2, h * 0.52, w * 0.055, h * 0.028, 0, 0, Math.PI * 2);
+          c.ellipse(w * 0.58, h * 0.5, w * 0.08, h * 0.034, 0, 0, Math.PI * 2);
           c.fill();
 
           // Bases, laid out as the diamond looks from behind home plate.
@@ -238,13 +269,13 @@ export const baseball = {
           }
 
           // Foul lines running out to the corners.
-          c.strokeStyle = 'rgba(255,255,255,0.28)';
-          c.lineWidth = 1.5;
+          c.strokeStyle = 'rgba(255,255,255,0.8)';
+          c.lineWidth = 5;
           c.beginPath();
-          c.moveTo(w / 2, h * 0.9);
-          c.lineTo(w * 1.02, fieldY + 6);
-          c.moveTo(w / 2, h * 0.9);
-          c.lineTo(-w * 0.02, fieldY + 6);
+          c.moveTo(w * 0.47, h * 0.96);
+          c.lineTo(w * 1.3, h * 0.6);
+          c.moveTo(w * 0.47, h * 0.96);
+          c.lineTo(-w * 0.3, h * 0.6);
           c.stroke();
 
           // Batter's boxes, chalked either side of the plate.
@@ -253,14 +284,13 @@ export const baseball = {
           c.strokeRect(w / 2 - 128, h * 0.80, 74, h * 0.15);
           c.strokeRect(w / 2 + 54, h * 0.80, 74, h * 0.15);
 
-          // Dugouts down each side.
-          for (const dx of [w * 0.06, w * 0.82]) {
-            c.fillStyle = '#20242c';
-            c.fillRect(dx, h * 0.62, w * 0.12, h * 0.07);
-            c.fillStyle = 'rgba(0,0,0,0.45)';
-            c.fillRect(dx + 4, h * 0.635, w * 0.12 - 8, h * 0.04);
-            crowd(c, dx + 6, h * 0.632, w * 0.12 - 12, h * 0.042, { seed: 44, rows: 1, dim: 0.35 });
+          // The fielders: shortstop, second, and the corners.
+          const fielders = [[w * 0.14, h * 0.6], [w * 0.88, h * 0.6]];
+          for (const [fx, fy] of fielders) {
+            groundShadow(c, fx, fy + 2, h * 0.03, { alpha: 0.26 });
+            figure(c, fx, fy, h * 0.11, { shirt: '#ffffff', pants: '#cdd9e4', cap: '#5aa8ea', pose: 'ready' });
           }
+
         });
       },
 
@@ -270,29 +300,27 @@ export const baseball = {
         ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
 
         ctx.drawImage(this.backdrop(w, h), 0, 0, w, h);
+        birds(ctx, w * 0.1, h * 0.09, h * 0.022, performance.now(), { seed: 23, count: 4 });
 
         // Home plate.
-        ctx.fillStyle = '#f2efe9';
+        ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.moveTo(w / 2 - 20, h * 0.875);
-        ctx.lineTo(w / 2 + 20, h * 0.875);
-        ctx.lineTo(w / 2 + 20, h * 0.9);
-        ctx.lineTo(w / 2, h * 0.925);
-        ctx.lineTo(w / 2 - 20, h * 0.9);
+        ctx.moveTo(w * 0.47 - 34, h * 0.9);
+        ctx.lineTo(w * 0.47 + 34, h * 0.9);
+        ctx.lineTo(w * 0.47 + 34, h * 0.94);
+        ctx.lineTo(w * 0.47, h * 0.985);
+        ctx.lineTo(w * 0.47 - 34, h * 0.94);
         ctx.closePath();
         ctx.fill();
 
         // The pitcher on the mound, winding up as the pitch comes.
         const wind = state.pitch ? Math.min(1, state.pitch.t / (state.pitch.duration * 0.3)) : 0;
-        const px = w / 2, py = h * 0.5;
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
-        ctx.beginPath();
-        ctx.ellipse(px, py + 44, 22, 7, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#d9dde4';                       // away greys
+        const px = w * 0.58, py = h * 0.47;
+        groundShadow(ctx, px, py + 46, 30, { alpha: 0.3 });
+        ctx.fillStyle = '#ffffff';                       // away whites
         roundRect(ctx, px - 13, py - 2, 26, 44, 9);
         ctx.fill();
-        ctx.strokeStyle = '#d9dde4';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 7;
         ctx.lineCap = 'round';
         ctx.beginPath();                                  // throwing arm
@@ -309,44 +337,26 @@ export const baseball = {
         ctx.beginPath();
         ctx.arc(px, py - 14, 12, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#2b4a7a';                        // cap
+        ctx.fillStyle = '#5aa8ea';                        // cap
         ctx.beginPath();
         ctx.arc(px, py - 16, 12, Math.PI, 0);
-        ctx.fill();
-
-        // Catcher and umpire, crouched behind the plate in the foreground.
-        const cy = h * 0.985;
-        ctx.fillStyle = '#4b5b73';
-        ctx.beginPath();
-        ctx.ellipse(w / 2 + 6, cy, 54, 46, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.fillStyle = '#39414f';
-        ctx.beginPath();
-        ctx.arc(w / 2 + 6, cy - 46, 21, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#2a2f3a';
-        ctx.beginPath();
-        ctx.ellipse(w / 2 + 74, cy + 6, 46, 40, 0, Math.PI, 0);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(w / 2 + 74, cy - 36, 18, 0, Math.PI * 2);
         ctx.fill();
 
         // The ball grows as it comes, which is the only depth cue there is.
         if (state.pitch) {
           const t = clamp(state.pitch.t / state.pitch.duration, 0, 1.1);
-          const x = w * lerp(0.5, state.pitch.x + state.pitch.curve * t, t);
+          const x = w * lerp(0.58, state.pitch.x + state.pitch.curve * t, t);
           const y = h * lerp(0.52, 0.87, t);
           const r = lerp(3.5, 17, t);
           ctx.fillStyle = 'rgba(0,0,0,0.18)';
           ctx.beginPath();
           ctx.ellipse(x, h * 0.9, r, r * 0.3, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillStyle = '#f6f4ee';
+          ctx.fillStyle = '#ffffff';
           ctx.beginPath();
           ctx.arc(x, y, r, 0, Math.PI * 2);
           ctx.fill();
-          ctx.strokeStyle = '#c4473a';
+          ctx.strokeStyle = '#f0705f';
           ctx.lineWidth = Math.max(1, r * 0.13);
           ctx.beginPath();
           ctx.arc(x - r * 0.5, y, r * 0.85, -0.75, 0.75);
@@ -354,29 +364,40 @@ export const baseball = {
           ctx.stroke();
         }
 
-        // The batter, with a bat.
+        // You at the plate: left of centre, large in frame, seen from behind,
+        // with the bat up over the shoulder. The camera sits just behind and
+        // above you, so the plate and the mound are both in view.
         const batter = input.player(twoPlayer ? state.turn : 0);
-        const bx = w / 2 - 155;
-        if (batter?.ok) {
-          drawAvatar(ctx, batter, { x: bx, y: h * 0.95, height: h * 0.34 });
-          const swung = state.swungAt !== null;
-          ctx.save();
-          ctx.translate(bx + 24, h * 0.72);
-          ctx.rotate(swung ? 0.5 : -0.95);
-          const grad = ctx.createLinearGradient(0, 0, 0, -h * 0.2);
-          grad.addColorStop(0, '#8a5a32');
-          grad.addColorStop(1, '#c79a63');
-          ctx.fillStyle = grad;
-          roundRect(ctx, -4, -h * 0.2, 8, h * 0.2, 4);
-          ctx.fill();
-          ctx.restore();
-        }
+        const swung = state.swungAt !== null;
+        const rightHanded = CONFIG.handedness !== 'left';
+        const side = rightHanded ? 1 : -1;
+        const youX = w * 0.29;
+        const youY = h * 1.0;
+        const youH = h * 0.62;
+        if (batter?.ok) drawAvatar(ctx, batter, { x: youX, y: youY, height: youH, back: true });
+
+        // The bat, loaded up behind the shoulder and swung through on contact.
+        const gripX = youX + side * youH * 0.1;
+        const gripY = youY - youH * 0.66;
+        ctx.save();
+        ctx.translate(gripX, gripY);
+        ctx.rotate(swung ? side * -1.6 : side * -0.42);
+        const grain = ctx.createLinearGradient(0, 0, 0, -youH * 0.62);
+        grain.addColorStop(0, '#c08a4e');
+        grain.addColorStop(1, '#f2d9ab');
+        ctx.fillStyle = grain;
+        roundRect(ctx, -youH * 0.032, -youH * 0.62, youH * 0.064, youH * 0.62, youH * 0.03);
+        ctx.fill();
+        ctx.fillStyle = '#2d3b45';
+        roundRect(ctx, -youH * 0.034, -youH * 0.15, youH * 0.068, youH * 0.15, youH * 0.026);
+        ctx.fill();
+        ctx.restore();
 
         // The strike zone, so the timing is learnable.
-        ctx.strokeStyle = 'rgba(242,239,233,0.3)';
-        ctx.setLineDash([6, 6]);
-        ctx.lineWidth = 2;
-        ctx.strokeRect(w / 2 - w * 0.065, h * 0.68, w * 0.13, h * 0.17);
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.setLineDash([5, 9]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(w * 0.47 - w * 0.05, h * 0.68, w * 0.1, h * 0.14);
         ctx.setLineDash([]);
         ctx.restore();
 

@@ -11,21 +11,35 @@ import { L, BONES } from './tracker.js';
 import { Sound } from './audio.js';
 
 export const PALETTE = {
-  ink: '#f2efe9',
-  dim: '#8d8a86',
-  night: '#0b0b0d',
-  panel: 'rgba(255,255,255,0.05)',
-  line: 'rgba(242,239,233,0.18)',
-  grass: '#4f8f5a',
-  grassDark: '#3d7047',
-  clay: '#b4643c',
-  court: '#3f6f9e',
-  sky: '#2b3a52',
-  skyWarm: '#6a4a68',
-  sand: '#d8c187',
-  gold: '#e7c15c',
-  red: '#d4604f',
-  blue: '#5a9fd4',
+  // Bright, flat and high-key. Everything is a solid fill; there is no grain,
+  // no vignette and almost no gradient anywhere in this game. Surfaces are
+  // light, text is dark, and saturation stays low enough that the player's
+  // figure is the most colourful thing on screen.
+  ink: '#2d3b45',
+  inkSoft: '#6d8291',
+  paper: '#f7fbfd',
+  paperEdge: '#dfeaf1',
+  night: '#eaf4fa',
+
+  sky: '#9fd8f2',
+  skyPale: '#dcf1fb',
+  grass: '#8ccc5c',
+  grassDark: '#74b84b',
+  grassPale: '#a3d874',
+  court: '#5aa0dd',
+  courtDark: '#4a8ac4',
+  clay: '#e49c66',
+  sand: '#f4e1a8',
+  wood: '#e8c084',
+  gold: '#f7c744',
+  red: '#f0705f',
+  blue: '#5aa8ea',
+  purple: '#9f92e0',
+
+  dim: '#8ea4b2',
+  panel: 'rgba(45,59,69,0.05)',
+  line: 'rgba(45,59,69,0.13)',
+  skyWarm: '#ffdcb5',
 };
 
 export function roundRect(ctx, x, y, w, h, r) {
@@ -165,11 +179,11 @@ export function menuTiles(items, w, h, { columns = 3, top = 0.34, maxWidth = 240
 
 export function drawTile(ctx, tile, { hovered = false, dwell = 0 } = {}) {
   ctx.save();
-  ctx.fillStyle = hovered ? 'rgba(242,239,233,0.12)' : PALETTE.panel;
+  ctx.fillStyle = hovered ? '#ffffff' : PALETTE.paper;
   roundRect(ctx, tile.x, tile.y, tile.w, tile.h, 14);
   ctx.fill();
-  ctx.strokeStyle = hovered ? PALETTE.gold : PALETTE.line;
-  ctx.lineWidth = hovered ? 2.5 : 1.5;
+  ctx.strokeStyle = hovered ? PALETTE.gold : PALETTE.paperEdge;
+  ctx.lineWidth = hovered ? 3 : 2;
   ctx.stroke();
 
   if (tile.icon) tile.icon(ctx, tile.x + tile.w / 2, tile.y + tile.h * 0.37, tile.w * 0.26);
@@ -198,8 +212,8 @@ export function drawBanner(ctx, w, h, title, sub, { alpha = 1 } = {}) {
 
 export function drawScorebar(ctx, w, left, right) {
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  roundRect(ctx, w / 2 - 190, 18, 380, 54, 12);
+  ctx.fillStyle = PALETTE.paper;
+  roundRect(ctx, w / 2 - 190, 18, 380, 54, 14);
   ctx.fill();
   text(ctx, left.name, w / 2 - 110, 36, { size: 13, color: PALETTE.dim });
   text(ctx, String(left.score), w / 2 - 110, 58, { size: 26, weight: 700 });
@@ -211,7 +225,7 @@ export function drawScorebar(ctx, w, left, right) {
 
 export function drawMeter(ctx, x, y, w, h, value, color = PALETTE.gold, label = '') {
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillStyle = 'rgba(45,59,69,0.12)';
   roundRect(ctx, x, y, w, h, h / 2);
   ctx.fill();
   ctx.fillStyle = color;
@@ -247,7 +261,8 @@ export class Toasts {
 // pixels. Anchoring at the feet and sizing by the body's own head-to-ankle
 // span is what keeps a figure standing on a court line instead of sliding off
 // the bottom of the screen when the player crouches or steps closer.
-export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue, facing = 1 } = {}) {
+export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue,
+  hair = '#5a4433', skin = '#ffd9b8', facing = 1, back = false } = {}) {
   if (!body || !body.ok) return;
   const j = body.joints;
 
@@ -269,7 +284,7 @@ export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue
   ctx.lineJoin = 'round';
 
   // Legs and torso first, so the arms sit on top of them.
-  ctx.strokeStyle = '#2f3a4a';
+  ctx.strokeStyle = '#45586a';
   ctx.lineWidth = height * 0.055;
   for (const [a, b] of [[L.leftHip, L.leftKnee], [L.leftKnee, L.leftAnkle],
                         [L.rightHip, L.rightKnee], [L.rightKnee, L.rightAnkle]]) {
@@ -303,7 +318,7 @@ export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue
   }
 
   // Hands.
-  ctx.fillStyle = '#f0cba8';
+  ctx.fillStyle = skin;
   for (const w of [L.leftWrist, L.rightWrist]) {
     if (!j[w]) continue;
     ctx.beginPath();
@@ -311,33 +326,59 @@ export function drawAvatar(ctx, body, { x, y, height = 160, color = PALETTE.blue
     ctx.fill();
   }
 
-  // Head, with a face that always points the way the figure is facing.
+  // Head. Seen from behind it is just hair; seen from the front it gets eyes
+  // and a smile.
   const nose = j[L.nose];
   if (nose && j[L.leftShoulder] && j[L.rightShoulder]) {
     const neckX = (px(j[L.leftShoulder]) + px(j[L.rightShoulder])) / 2;
     const neckY = (py(j[L.leftShoulder]) + py(j[L.rightShoulder])) / 2;
     const hx = px(nose), hy = py(nose);
-    ctx.strokeStyle = '#f0cba8';
+    const r = height * 0.1;
+
+    ctx.strokeStyle = skin;
     ctx.lineWidth = height * 0.045;
     ctx.beginPath();
     ctx.moveTo(neckX, neckY);
     ctx.lineTo(hx, hy);
     ctx.stroke();
-    const r = height * 0.085;
-    ctx.fillStyle = '#f0cba8';
+
+    ctx.fillStyle = skin;
     ctx.beginPath();
     ctx.arc(hx, hy, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#2f3a4a';
-    ctx.beginPath();
-    ctx.arc(hx - r * 0.3 * facing, hy - r * 0.1, r * 0.11, 0, Math.PI * 2);
-    ctx.arc(hx + r * 0.3 * facing, hy - r * 0.1, r * 0.11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#2f3a4a';
-    ctx.lineWidth = r * 0.1;
-    ctx.beginPath();
-    ctx.arc(hx, hy + r * 0.12, r * 0.42, 0.25 * Math.PI, 0.75 * Math.PI);
-    ctx.stroke();
+
+    if (back) {
+      // The back of the head: hair over everything but the jaw.
+      ctx.fillStyle = hair;
+      ctx.beginPath();
+      ctx.arc(hx, hy - r * 0.08, r * 1.02, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy + r * 0.78, r * 0.52, r * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(hx, hy, r, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = hair;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - r * 0.62, r * 1.05, r * 0.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = '#2d3b45';
+      ctx.beginPath();
+      ctx.arc(hx - r * 0.32 * facing, hy + r * 0.04, r * 0.12, 0, Math.PI * 2);
+      ctx.arc(hx + r * 0.32 * facing, hy + r * 0.04, r * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#2d3b45';
+      ctx.lineWidth = r * 0.1;
+      ctx.beginPath();
+      ctx.arc(hx, hy + r * 0.18, r * 0.4, 0.22 * Math.PI, 0.78 * Math.PI);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 }

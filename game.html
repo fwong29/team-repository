@@ -6,7 +6,7 @@
   <title>Motion Sports</title>
   <link rel="icon" href="data:,">
   <style>
-    html, body { margin: 0; height: 100%; background: #0b0b0d; overflow: hidden;
+    html, body { margin: 0; height: 100%; background: #eaf4fa; overflow: hidden;
                  font-family: system-ui, -apple-system, sans-serif; }
     #stage { position: fixed; inset: 0; width: 100vw; height: 100vh; }
     /* The camera feed is never shown to the player; the debug overlay draws
@@ -14,12 +14,12 @@
     #camera { position: fixed; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
     #start { position: fixed; left: 50%; top: 58%; transform: translate(-50%, -50%);
              font: 17px/1.2 system-ui, sans-serif; padding: 15px 30px; border-radius: 8px;
-             border: 1px solid #f2efe9; background: transparent; color: #f2efe9; cursor: pointer; }
-    #start:hover { background: rgba(242,239,233,0.1); }
+             border: 2px solid #2d3b45; background: #ffffff; color: #2d3b45; cursor: pointer; }
+    #start:hover { background: #dcf1fb; }
     #start:disabled { opacity: 0.6; cursor: wait; }
     #status { position: fixed; left: 50%; bottom: 7%; transform: translateX(-50%);
               margin: 0; max-width: 70vw; text-align: center; font-size: 13px; line-height: 1.5;
-              color: #8d8a86; }
+              color: #6d8291; }
   </style>
 </head>
 <body>

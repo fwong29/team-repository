@@ -6,8 +6,8 @@
 // real punch from an arm waved about. Hands up by the face is a guard; leaning
 // hard to one side is a dodge.
 
-import { PALETTE, text, drawMeter, drawAvatar, roundRect } from '../ui.js';
-import { layer, crowd, rng } from '../scenery.js';
+import { PALETTE, text, drawMeter, roundRect } from '../ui.js';
+import { layer, crowd, rng, figure, groundShadow, vignette, speckle, flashes } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { Sound } from '../audio.js';
 
@@ -154,17 +154,29 @@ export const boxing = {
       backdrop(w, h) {
         return layer('ring', w, h, (c) => {
           // A dark hall: the crowd is lit only by spill from the ring.
-          c.fillStyle = '#0a0b10';
+          c.fillStyle = '#dfeaf1';
           c.fillRect(0, 0, w, h);
-          crowd(c, 0, h * 0.02, w, h * 0.3, { seed: 77, rows: 8, dim: 0.62, warm: true });
-          c.fillStyle = 'rgba(8,9,14,0.55)';
-          c.fillRect(0, 0, w, h * 0.34);
+          crowd(c, 0, h * 0.02, w, h * 0.3, { seed: 77, rows: 8 });
+          
+
+          // The lighting rig itself, hanging over the ring.
+          c.fillStyle = '#c6d6e2';
+          c.fillRect(w * 0.14, 0, w * 0.72, h * 0.035);
+          for (let i = 0; i < 9; i++) {
+            const lx = w * 0.17 + i * w * 0.0825;
+            c.fillStyle = '#b4c7d6';
+            c.fillRect(lx - 9, h * 0.035, 18, h * 0.016);
+            c.fillStyle = '#fff6d8';
+            c.beginPath();
+            c.ellipse(lx, h * 0.051, 8, 4, 0, 0, Math.PI * 2);
+            c.fill();
+          }
 
           // Spotlight cones from the rig above.
           for (const sx of [w * 0.26, w * 0.5, w * 0.74]) {
             const cone = c.createLinearGradient(sx, 0, sx, h * 0.8);
-            cone.addColorStop(0, 'rgba(255,244,214,0.16)');
-            cone.addColorStop(1, 'rgba(255,244,214,0)');
+            cone.addColorStop(0, 'rgba(255,255,255,0.3)');
+            cone.addColorStop(1, 'rgba(255,255,255,0)');
             c.fillStyle = cone;
             c.beginPath();
             c.moveTo(sx - 26, 0);
@@ -177,7 +189,7 @@ export const boxing = {
 
           // The canvas, in perspective: narrow at the back, wide at the front.
           const backY = h * 0.34, frontY = h * 1.04;
-          c.fillStyle = '#4e6c93';
+          c.fillStyle = '#5aa0dd';
           c.beginPath();
           c.moveTo(w * 0.17, backY);
           c.lineTo(w * 0.83, backY);
@@ -201,14 +213,24 @@ export const boxing = {
           c.globalAlpha = 1;
 
           // The apron skirt hanging off the front edge.
-          c.fillStyle = '#2b3550';
+          c.fillStyle = '#4a8ac4';
           c.fillRect(-w * 0.16, h * 0.995, w * 1.32, h * 0.1);
           c.fillStyle = 'rgba(255,255,255,0.06)';
           c.fillRect(-w * 0.16, h * 0.995, w * 1.32, 3);
 
+          // Corner stools waiting in the far corners between rounds.
+          for (const sx of [w * 0.235, w * 0.765]) {
+            c.fillStyle = '#b4c7d6';
+            c.fillRect(sx - 11, backY + h * 0.025, 22, 5);
+            c.fillRect(sx - 9, backY + h * 0.03, 3, h * 0.03);
+            c.fillRect(sx + 6, backY + h * 0.03, 3, h * 0.03);
+            c.fillStyle = '#d99a52';                    // a bucket beside it
+            c.fillRect(sx + 16, backY + h * 0.045, 11, 13);
+          }
+
           // Back ropes and the two far posts.
           const post = (x, colour) => {
-            c.fillStyle = '#20252f';
+            c.fillStyle = '#8ea4b2';
             c.fillRect(x - 7, backY - h * 0.26, 14, h * 0.28);
             c.fillStyle = colour;                       // turnbuckle padding
             for (let i = 0; i < 3; i++) {
@@ -217,7 +239,7 @@ export const boxing = {
             }
           };
           const rope = (y, x0, x1, sag) => {
-            c.strokeStyle = '#e6e2d8';
+            c.strokeStyle = '#ffffff';
             c.lineWidth = 4;
             c.beginPath();
             c.moveTo(x0, y);
@@ -230,12 +252,36 @@ export const boxing = {
         });
       },
 
-      // The near ropes, drawn after the boxers so they are genuinely in front.
+      // The near ropes and the two side runs, drawn after the boxers so they
+      // are genuinely in front. A ring has four sides: the back run is in the
+      // backdrop, these are the other three.
       foreground(ctx, w, h) {
+        // Side ropes, each sloping from its far post down to its near post.
+        const backY = h * 0.34;
+        for (const [farX, nearX] of [[w * 0.17, w * 0.02], [w * 0.83, w * 0.98]]) {
+          for (let i = 0; i < 3; i++) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4 + i * 1.6;
+            ctx.beginPath();
+            ctx.moveTo(farX, backY - h * 0.2 + i * h * 0.075);
+            ctx.lineTo(nearX, h * 0.72 + i * h * 0.1);
+            ctx.stroke();
+          }
+        }
+
+        // Photographers at the ring apron, shooting up at the fighters.
+        for (const [px2, face] of [[w * 0.1, 1], [w * 0.22, 1], [w * 0.78, -1], [w * 0.9, -1]]) {
+          figure(ctx, px2, h * 1.06, h * 0.2, { shirt: '#6d8291', pants: '#56697a', pose: 'point', facing: face });
+          ctx.fillStyle = '#2d3b45';
+          ctx.beginPath();
+          ctx.arc(px2 + face * h * 0.055, h * 0.92, h * 0.022, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
         const y0 = h * 0.72;
         for (let i = 0; i < 3; i++) {
           const y = y0 + i * h * 0.1;
-          ctx.strokeStyle = i === 1 ? '#efe9dc' : '#ddd6c8';
+          ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 7 + i * 2;
           ctx.beginPath();
           ctx.moveTo(-w * 0.05, y);
@@ -244,7 +290,7 @@ export const boxing = {
         }
         // Near posts at the corners of the frame.
         for (const [x, colour] of [[w * 0.02, '#c4473a'], [w * 0.98, '#3f6fa8']]) {
-          ctx.fillStyle = '#20252f';
+          ctx.fillStyle = '#8ea4b2';
           ctx.fillRect(x - 13, h * 0.58, 26, h * 0.45);
           ctx.fillStyle = colour;
           for (let i = 0; i < 3; i++) {
@@ -256,18 +302,26 @@ export const boxing = {
 
       draw(ctx, w, h) {
         ctx.drawImage(this.backdrop(w, h), 0, 0, w, h);
+        
+
+        // The referee, moving with the action but staying out of the way.
+        const refX = w * 0.5 + Math.sin(state.bob * 0.4) * w * 0.17 + w * 0.2;
+        const refY = h * 0.56;
+        groundShadow(ctx, refX, refY + 2, h * 0.05, { alpha: 0.3 });
+        figure(ctx, refX, refY, h * 0.17, { shirt: '#ffffff', pants: '#56697a', pose: 'stand',
+          facing: -1, lean: Math.sin(state.bob * 0.4) * 0.3 });
 
         // The opponent, bobbing, and winding up in red when an attack is coming.
         const bobY = Math.sin(state.bob) * 8;
         const cx = w / 2 + (state.windup > 0 ? state.attackSide * 26 * (1 - state.windup) : 0);
-        const cy = h * 0.42 + bobY;
+        const cy = h * 0.40 + bobY;
         ctx.save();
         if (state.hitFlash > 0) {
           ctx.globalAlpha = 1;
           ctx.translate((Math.random() - 0.5) * state.hitFlash * 14, 0);
         }
         // Legs and boots, so the challenger stands on the canvas.
-        ctx.strokeStyle = '#2f3a4a';
+        ctx.strokeStyle = '#56697a';
         ctx.lineWidth = 26;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -276,20 +330,20 @@ export const boxing = {
         ctx.moveTo(cx + 26, cy + 96);
         ctx.lineTo(cx + 34, cy + 160);
         ctx.stroke();
-        ctx.fillStyle = '#c4473a';
+        ctx.fillStyle = '#f0705f';
         roundRect(ctx, cx - 50, cy + 160, 34, 20, 6);
         ctx.fill();
         roundRect(ctx, cx + 16, cy + 160, 34, 20, 6);
         ctx.fill();
 
         // Trunks.
-        ctx.fillStyle = state.windup > 0 ? '#a33b30' : '#3f4a63';
+        ctx.fillStyle = state.windup > 0 ? '#e05a48' : '#6d8291';
         roundRect(ctx, cx - 44, cy + 72, 88, 48, 12);
         ctx.fill();
         ctx.fillStyle = '#e7c15c';
         ctx.fillRect(cx - 44, cy + 74, 88, 7);
 
-        ctx.fillStyle = state.windup > 0 ? PALETTE.red : '#8f5c52';
+        ctx.fillStyle = state.windup > 0 ? PALETTE.red : '#d98f6e';
         roundRect(ctx, cx - 62, cy - 40, 124, 150, 26);
         ctx.fill();
         ctx.fillStyle = '#f0cba8';
@@ -307,18 +361,72 @@ export const boxing = {
         ctx.arc(cx, cy - 58, 16, state.windup > 0 ? Math.PI : 0.2 * Math.PI,
           state.windup > 0 ? Math.PI * 2 : 0.8 * Math.PI);
         ctx.stroke();
-        // Gloves.
-        ctx.fillStyle = PALETTE.red;
-        ctx.beginPath();
-        ctx.arc(cx - 72, cy + 24 + (state.windup > 0 ? -18 : 0), 22, 0, Math.PI * 2);
-        ctx.arc(cx + 72, cy + 24 + (state.windup > 0 ? -18 : 0), 22, 0, Math.PI * 2);
-        ctx.fill();
+        // Gloves, with laces and a highlight so they read as leather.
+        const gloveY = cy + 24 + (state.windup > 0 ? -18 : 0);
+        for (const gx of [cx - 72, cx + 72]) {
+          const lit = ctx.createRadialGradient(gx - 7, gloveY - 8, 2, gx, gloveY, 24);
+          lit.addColorStop(0, '#f78a78');
+          lit.addColorStop(1, '#d4523f');
+          ctx.fillStyle = lit;
+          ctx.beginPath();
+          ctx.arc(gx, gloveY, 22, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#f2efe9';
+          ctx.lineWidth = 2;
+          for (let i = -1; i <= 1; i++) {
+            ctx.beginPath();
+            ctx.moveTo(gx - 6, gloveY + i * 6);
+            ctx.lineTo(gx + 6, gloveY + i * 6);
+            ctx.stroke();
+          }
+        }
         ctx.restore();
 
+        // Your own gloves, bottom of frame, following your real hands. First
+        // person is the right camera for a punching game: you look at the
+        // opponent, not at a figure of yourself.
         const me = input.player(0);
-        if (me?.ok) drawAvatar(ctx, me, { x: w * 0.5, y: h * 1.32, height: h * 0.66 });
+        const guard = guarding(me);
+        for (const side of ['left', 'right']) {
+          const hand = me?.ok ? me.hands[side] : null;
+          const home = side === 'left' ? w * 0.22 : w * 0.78;
+          // The hand's travel across the camera maps to the bottom of the
+          // screen; punching pushes the glove up the frame and swells it.
+          const reach = me?.ok ? clamp(hand.extension, 0, 1.2) : 0.3;
+          const gx = hand && hand.visible
+            ? lerp(home, w * 0.5 + (side === 'left' ? -w * 0.1 : w * 0.1), reach * 0.55)
+            : home;
+          const gy = guard ? h * 0.62 : h * (0.96 - reach * 0.26);
+          const size = h * (0.1 + reach * 0.07);
+
+          ctx.save();
+          ctx.fillStyle = 'rgba(45,59,69,0.12)';
+          ctx.beginPath();
+          ctx.ellipse(gx, gy + size * 0.9, size * 0.9, size * 0.22, 0, 0, Math.PI * 2);
+          ctx.fill();
+          const lit = ctx.createRadialGradient(gx - size * 0.3, gy - size * 0.35, size * 0.1, gx, gy, size * 1.2);
+          lit.addColorStop(0, '#ffb14e');
+          lit.addColorStop(1, '#e07a1c');
+          ctx.fillStyle = lit;
+          ctx.beginPath();
+          ctx.arc(gx, gy, size, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#c96a12';                     // the cuff
+          roundRect(ctx, gx - size * 0.62, gy + size * 0.6, size * 1.24, size * 0.5, size * 0.22);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';                   // laces
+          ctx.lineWidth = Math.max(2, size * 0.09);
+          for (let i = -1; i <= 1; i++) {
+            ctx.beginPath();
+            ctx.moveTo(gx - size * 0.28, gy + i * size * 0.26);
+            ctx.lineTo(gx + size * 0.28, gy + i * size * 0.26);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
 
         this.foreground(ctx, w, h);
+        
 
         if (state.hurtFlash > 0) {
           ctx.fillStyle = `rgba(212,96,79,${state.hurtFlash * 0.4})`;

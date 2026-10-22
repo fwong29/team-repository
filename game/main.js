@@ -211,9 +211,10 @@ function handleMenuPick(id) {
 // ---- Drawing ----------------------------------------------------------------
 
 function background(w, h) {
-  const g = ctx.createLinearGradient(0, 0, w, h);
-  g.addColorStop(0, '#14161d');
-  g.addColorStop(1, '#1d1822');
+  // The shell matches the games: light, flat, no gradient worth the name.
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#dcf1fb');
+  g.addColorStop(1, '#eaf4fa');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }
@@ -349,7 +350,7 @@ function frame(now) {
 
     case 'paused': {
       game.scene_obj.draw(ctx, w, h);
-      ctx.fillStyle = 'rgba(11,11,13,0.82)';
+      ctx.fillStyle = 'rgba(234,244,250,0.88)';
       ctx.fillRect(0, 0, w, h);
       text(ctx, 'Paused', w / 2, h * 0.3, { size: 48, weight: 700 });
       const tiles = [

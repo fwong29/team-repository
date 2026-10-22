@@ -77,13 +77,16 @@
       player: () => mockBody(clock),
     };
 
+    window.__in = input;   // the mock input, exposed for headless screenshots
+
     let current = new URLSearchParams(location.search).get('scene') || 'tennis';
     let scene = null;
     let queued = [];
 
     function load(id) {
       current = id;
-      scene = SPORTS[id].create({ input, toasts, twoPlayer: false, difficulty: 1 });
+      const startHole = Number(new URLSearchParams(location.search).get('hole') || 0);
+      scene = SPORTS[id].create({ input, toasts, twoPlayer: false, difficulty: 1, startHole });
       for (const b of document.querySelectorAll('#bar button[data-sport]')) {
         b.classList.toggle('on', b.dataset.sport === id);
       }

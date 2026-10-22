@@ -5,7 +5,7 @@
 // moves further away each time you make one, so a shot that worked once will
 // not keep working.
 
-import { PALETTE, text, drawMeter, roundRect, drawAvatar } from '../ui.js';
+import { PALETTE, text, drawMeter, roundRect } from '../ui.js';
 import { layer, stand, hardwood, scoreboard } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { Sound } from '../audio.js';
@@ -122,23 +122,18 @@ export const basketball = {
           const floorY = h * 0.52;
 
           // Dark roof and the stands behind the baseline.
-          c.fillStyle = '#14161d';
+          c.fillStyle = '#e4edf3';
           c.fillRect(0, 0, w, floorY);
-          stand(c, 0, h * 0.12, w, h * 0.4, { seed: 55, rows: 7, deck: '#242832', dim: 0.1 });
-          c.fillStyle = '#2a2f3a';
+          stand(c, 0, h * 0.12, w, h * 0.4, { seed: 55, rows: 7, deck: '#cfdde8' });
+          c.fillStyle = '#b4c7d6';
           c.fillRect(0, h * 0.5, w, h * 0.025);         // the barrier at courtside
 
           // Hardwood, warm and boarded.
-          hardwood(c, 0, floorY, w, h - floorY, { seed: 3, base: '#c08a46' });
-          const glow = c.createLinearGradient(0, floorY, 0, h);
-          glow.addColorStop(0, 'rgba(255,230,180,0.16)');
-          glow.addColorStop(1, 'rgba(90,50,10,0.3)');
-          c.fillStyle = glow;
-          c.fillRect(0, floorY, w, h - floorY);
+          hardwood(c, 0, floorY, w, h - floorY, { seed: 3, base: '#f0cf96' });
 
           // The painted lines. Everything is an ellipse or a trapezoid,
           // because the court is seen from behind the shooter.
-          const line = (fn, width = 3, colour = 'rgba(248,246,240,0.85)') => {
+          const line = (fn, width = 3.5, colour = '#ffffff') => {
             c.strokeStyle = colour;
             c.lineWidth = width;
             c.beginPath();
@@ -147,7 +142,7 @@ export const basketball = {
           };
 
           // The paint, in team colour, narrowing toward the baseline.
-          c.fillStyle = 'rgba(40,96,160,0.72)';
+          c.fillStyle = '#5aa0dd';
           c.beginPath();
           c.moveTo(w * 0.5 - w * 0.085, floorY + h * 0.02);
           c.lineTo(w * 0.5 + w * 0.085, floorY + h * 0.02);
@@ -172,19 +167,19 @@ export const basketball = {
           line(() => c.ellipse(w / 2, floorY + h * 0.04, w * 0.42, h * 0.33, 0, 0.08 * Math.PI, 0.92 * Math.PI), 3.5);
 
           // Backboard, on its post, with a rim and a net.
-          c.fillStyle = '#3a414c';
+          c.fillStyle = '#b4c7d6';
           c.fillRect(w / 2 - 5, h * 0.06, 10, h * 0.2);
-          c.fillStyle = 'rgba(236,240,245,0.92)';
+          c.fillStyle = '#ffffff';
           roundRect(c, w / 2 - 62, h * 0.21 - 70, 124, 82, 5);
           c.fill();
-          c.strokeStyle = '#d4604f';
+          c.strokeStyle = '#f0705f';
           c.lineWidth = 4;
           c.strokeRect(w / 2 - 62, h * 0.21 - 70, 124, 82);
           c.strokeRect(w / 2 - 25, h * 0.21 - 36, 50, 36);   // the shooter's square
           c.beginPath();                                      // rim
           c.ellipse(w / 2, h * 0.3 + 12, 33, 10, 0, 0, Math.PI * 2);
           c.stroke();
-          c.strokeStyle = 'rgba(248,246,240,0.75)';
+          c.strokeStyle = '#ffffff';
           c.lineWidth = 1.5;
           for (let i = -4; i <= 4; i++) {                     // net
             c.beginPath();
@@ -220,8 +215,8 @@ export const basketball = {
             Math.sin(t * Math.PI) * h * 0.3 * peak;
           const spin = t * 7;
           const ball = ctx.createRadialGradient(x - 5, y - 6, 2, x, y, 17);
-          ball.addColorStop(0, '#f0a055');
-          ball.addColorStop(1, '#c86f22');
+          ball.addColorStop(0, '#ffa95e');
+          ball.addColorStop(1, '#e07c2c');
           ctx.fillStyle = ball;
           ctx.beginPath();
           ctx.arc(x, y, 16, 0, Math.PI * 2);
@@ -229,7 +224,7 @@ export const basketball = {
           ctx.save();
           ctx.translate(x, y);
           ctx.rotate(spin);
-          ctx.strokeStyle = '#4a2a12';
+          ctx.strokeStyle = '#a85a16';
           ctx.lineWidth = 1.8;
           ctx.beginPath();
           ctx.arc(0, 0, 16, 0, Math.PI * 2);
@@ -244,17 +239,47 @@ export const basketball = {
           ctx.restore();
         }
 
-        // The shooter.
+        // The ball in your own hands at the bottom of frame, rising as you
+        // load the shot. First person, like the rest of the game.
         const shooter = input.player(twoPlayer ? state.turn : 0);
-        if (shooter?.ok && !state.shot) {
-          drawAvatar(ctx, shooter, { x: hoopX, y: shooterY + 6, height: h * 0.34 });
+        if (!state.shot) {
+          const lift = shooter?.ok
+            ? clamp((0.6 - (shooter.hands.left.y + shooter.hands.right.y) / 2) * 2.2)
+            : 0;
+          const bx = hoopX + (shooter?.ok ? shooter.lean * w * 0.05 : 0);
+          const by = h * (1.0 - lift * 0.22);
+          const br = h * 0.085;
+          const held = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.35, br * 0.1, bx, by, br * 1.2);
+          held.addColorStop(0, '#ffa95e');
+          held.addColorStop(1, '#e07c2c');
+          ctx.fillStyle = held;
+          ctx.beginPath();
+          ctx.arc(bx, by, br, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#a85a16';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.arc(bx, by, br, 0, Math.PI * 2);
+          ctx.moveTo(bx - br, by);
+          ctx.lineTo(bx + br, by);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.ellipse(bx, by, br * 0.42, br, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          // Two hands cupping it from underneath.
+          ctx.fillStyle = '#ffd9b8';
+          for (const side of [-1, 1]) {
+            ctx.beginPath();
+            ctx.ellipse(bx + side * br * 0.86, by + br * 0.3, br * 0.34, br * 0.46, side * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
 
         // Distance and the push it needs, down the left so the shooter is not
         // standing in the middle of the text. On a panel, or the hardwood
         // swallows it.
-        ctx.fillStyle = 'rgba(10,12,16,0.62)';
-        roundRect(ctx, 16, h - 118, 212, 102, 10);
+        ctx.fillStyle = '#f7fbfd';
+        roundRect(ctx, 16, h - 118, 212, 102, 12);
         ctx.fill();
         const metres = (3 + state.spot * 6).toFixed(1);
         text(ctx, `${metres} m`, 28, h - 96, { size: 20, align: 'left', weight: 600 });
