@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { flat } from './stage.js';
 import { Figure } from './figure.js';
+import { clouds, hills, bench, fence, banner } from './stadium3d.js';
 
 const COURT = { length: 23.8, width: 10.97, singles: 8.23 };
 
@@ -71,15 +72,46 @@ export function buildTennis(stage) {
     group.add(post);
   }
 
-  // A low wall around the outside, so the court sits in something.
-  for (const [w, l, x, z] of [[COURT.width + 9, 0.3, 0, half + 6.2], [COURT.width + 9, 0.3, 0, -half - 6.2],
-                              [0.3, COURT.length + 12.4, COURT.width / 2 + 4.4, 0],
-                              [0.3, COURT.length + 12.4, -COURT.width / 2 - 4.4, 0]]) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 2.2, l), flat('#2f6b4e'));
-    wall.position.set(x, 1.1, z);
-    wall.receiveShadow = true;
-    group.add(wall);
+  // Fencing with a windscreen all the way round, which is what makes an
+  // outdoor court read as a court rather than a painted rectangle.
+  const fw = COURT.width + 9, fl = COURT.length + 12.4;
+  for (const [w2, x, z, rot] of [[fw, 0, half + 6.2, 0], [fw, 0, -half - 6.2, 0],
+                                 [fl, COURT.width / 2 + 4.4, 0, Math.PI / 2],
+                                 [fl, -COURT.width / 2 - 4.4, 0, Math.PI / 2]]) {
+    const f = fence(w2, 3.2);
+    f.position.set(x, 0, z);
+    f.rotation.y = rot;
+    group.add(f);
   }
+
+  // Benches courtside, an umpire in a high chair, and banners on the fence.
+  const seatA = bench(3.2, { seats: 3, seed: 11, shirt: '#f6d98a' });
+  seatA.position.set(COURT.width / 2 + 2.6, 0, 4);
+  seatA.rotation.y = -Math.PI / 2;
+  group.add(seatA);
+  const seatB = bench(3.2, { seats: 2, seed: 12, shirt: '#a8cdf0' });
+  seatB.position.set(-COURT.width / 2 - 2.6, 0, 4);
+  seatB.rotation.y = Math.PI / 2;
+  group.add(seatB);
+
+  const chairLegs = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.6, 0.9), flat('#b4c7d6'));
+  chairLegs.position.set(COURT.width / 2 + 1.9, 1.3, 0);
+  chairLegs.castShadow = true;
+  group.add(chairLegs);
+  const umpire = new Figure({ shirt: '#f7fbfd', hair: '#4a3626', height: 1.6 });
+  umpire.root.position.set(COURT.width / 2 + 1.9, 2.6, 0);
+  umpire.root.rotation.y = -Math.PI / 2;
+  stage.world.add(umpire.root);
+
+  for (const [bx, bz, colour] of [[-6, -half - 6.1, '#ef6a5a'], [0, -half - 6.1, '#5aa8ea'], [6, -half - 6.1, '#f6d98a']]) {
+    const b = banner(4.2, 1.1, colour);
+    b.position.set(bx, 1.2, bz + 0.05);
+    group.add(b);
+  }
+
+  // Trees and hills beyond the fence, and cloud over the top.
+  stage.world.add(hills({ radius: 150, count: 16, seed: 4, colour: '#6cb152' }));
+  stage.world.add(clouds({ count: 12, seed: 7, height: 70, spread: 220 }));
 
   // You, and the far player.
   const you = new Figure({ shirt: '#5aa8ea' });
@@ -123,7 +155,7 @@ export function buildTennis(stage) {
   racket.rotation.x = -0.5;
 
   return {
-    group, you, them, ball, blob, racket,
+    group, you, them, ball, blob, racket, umpire,
     // ballAt takes court coordinates: x across, y up, z down the court.
     ballAt(x, y, z) {
       ball.position.set(x, Math.max(0.11, y), z);

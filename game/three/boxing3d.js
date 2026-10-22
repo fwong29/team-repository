@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { flat } from './stage.js';
 import { Figure } from './figure.js';
-import { stand } from './stadium3d.js';
+import { stand, bench, lightRig, banner } from './stadium3d.js';
 
 const RING = 6.1;                    // half the canvas, in metres
 
@@ -62,6 +62,49 @@ export function buildBoxing(stage) {
     bank.position.set(Math.sin(a) * 17, 0, Math.cos(a) * 17);
     bank.rotation.y = a + Math.PI;
     group.add(bank);
+  }
+
+  // A truss of lights hanging over the ring.
+  for (const z of [-2.5, 2.5]) {
+    const rig = lightRig(14, 6);
+    rig.position.set(0, 9.5, z);
+    group.add(rig);
+  }
+
+  // Stools and buckets waiting in two corners.
+  for (const [sx, sz] of [[-RING + 0.9, -RING + 0.9], [RING - 0.9, RING - 0.9]]) {
+    const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.08, 12), flat('#b4c7d6'));
+    stool.position.set(sx, 1.55, sz);
+    group.add(stool);
+    for (const [lx, lz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6), flat('#8ea4b2'));
+      leg.position.set(sx + lx, 1.26, sz + lz);
+      group.add(leg);
+    }
+    const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.13, 0.3, 10), flat('#f7c744'));
+    bucket.position.set(sx + 0.6, 1.15, sz);
+    group.add(bucket);
+  }
+
+  // Ringside: a commentary table and rows of seats below the apron.
+  const table = new THREE.Mesh(new THREE.BoxGeometry(5, 0.9, 1), flat('#b4c7d6'));
+  table.position.set(0, 0.45, RING + 2.6);
+  table.castShadow = true;
+  group.add(table);
+  for (const s2 of [-1, 1]) {
+    const seats = bench(5, { seats: 4, seed: 80 + s2, shirt: '#56697a' });
+    seats.position.set(s2 * 7, 0, RING + 2.2);
+    seats.rotation.y = -s2 * 0.6;
+    group.add(seats);
+  }
+
+  // Banners on the barrier behind the crowd.
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.4;
+    const b = banner(5, 1.4, ['#ef6a5a', '#5aa8ea', '#f6d98a', '#b6e0a4'][i]);
+    b.position.set(Math.sin(a) * 23, 1.4, Math.cos(a) * 23);
+    b.lookAt(0, 1.4, 0);
+    group.add(b);
   }
 
   const you = new Figure({ shirt: '#5aa8ea' });

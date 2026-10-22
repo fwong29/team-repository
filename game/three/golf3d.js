@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { flat } from './stage.js';
 import { Figure } from './figure.js';
+import { clouds, hills, bench } from './stadium3d.js';
 
 const SCALE = 0.42;                 // world metres per yard, so a hole fits
 
@@ -18,7 +19,7 @@ function centreAt(hole, t) {
 
 export function buildGolf(stage, hole) {
   stage.sky('#8fd2f0', '#dcf1fb');
-  stage.ground('#5f9e3f', 600);
+  stage.ground('#4f8a35', 600);
 
   const group = new THREE.Group();
   stage.world.add(group);
@@ -32,27 +33,32 @@ export function buildGolf(stage, hole) {
     -t * length,
   );
 
-  // The fairway, as one ribbon of triangles down the centre line.
+  // The fairway, as a ribbon of triangles down the centre line — and mown in
+  // alternating bands, which is both what a fairway looks like and the only
+  // thing that separates it from the rough at this camera height.
   const steps = 48;
-  const positions = [];
-  const indices = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const w = hole.width * 14;
-    const l = at(t, -hole.width), r = at(t, hole.width);
-    positions.push(l.x, 0.03, l.z, r.x, 0.03, r.z);
-    if (i < steps) {
-      const a = i * 2;
-      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  const band = 4;                     // steps per mown stripe
+  for (let b = 0; b * band < steps; b++) {
+    const positions = [];
+    const indices = [];
+    const from = b * band, to = Math.min(steps, from + band);
+    for (let i = from; i <= to; i++) {
+      const t = i / steps;
+      const l = at(t, -hole.width), r = at(t, hole.width);
+      positions.push(l.x, 0.03, l.z, r.x, 0.03, r.z);
+      if (i < to) {
+        const a = (i - from) * 2;
+        indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
     }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    const strip = new THREE.Mesh(geo, flat(b % 2 ? '#9ad86a' : '#8ac95b'));
+    strip.receiveShadow = true;
+    group.add(strip);
   }
-  const ribbon = new THREE.BufferGeometry();
-  ribbon.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  ribbon.setIndex(indices);
-  ribbon.computeVertexNormals();
-  const fairway = new THREE.Mesh(ribbon, flat('#9ad86a'));
-  fairway.receiveShadow = true;
-  group.add(fairway);
 
   // The green, and the pin on it.
   const pinPos = at(1);
@@ -98,6 +104,43 @@ export function buildGolf(stage, hole) {
     group.add(makeTree(l.x, l.z, 5 + (i % 3)));
     group.add(makeTree(r.x, r.z, 5 + ((i + 1) % 3)));
   }
+
+  // Sky and distance: cloud overhead and hills at the far edge, so the hole
+  // sits in a landscape instead of on an infinite green plane.
+  stage.world.add(clouds({ count: 16, seed: 13, height: 80, spread: 300 }));
+  stage.world.add(hills({ radius: 230, count: 20, seed: 21, colour: '#6cb152' }));
+
+  // A tee box, a bench on it, and markers either side.
+  const teeBox = new THREE.Mesh(new THREE.BoxGeometry(7, 0.18, 5), flat('#a3d874'));
+  teeBox.position.set(0, 0.09, 1.5);
+  teeBox.receiveShadow = true;
+  group.add(teeBox);
+  for (const s2 of [-1, 1]) {
+    const marker = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), flat('#ef6a5a'));
+    marker.position.set(s2 * 1.9, 0.26, 1.2);
+    group.add(marker);
+  }
+  const teeBench = bench(2.4, { seats: 2, seed: 31, shirt: '#f6d98a' });
+  teeBench.position.set(3.6, 0.18, 2.4);
+  teeBench.rotation.y = -0.5;
+  group.add(teeBench);
+
+  // A rake leaning in each bunker, and a cart path down one side.
+  for (const hz of hole.hazards.filter(h => h.kind === 'sand')) {
+    const p2 = at(hz.at, hz.off);
+    const rake = new THREE.Group();
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2, 6), flat('#d99a52'));
+    handle.rotation.z = 0.6;
+    rake.add(handle);
+    const headBar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.1), flat('#2d3b45'));
+    headBar.position.set(0.62, -1.0, 0);
+    rake.add(headBar);
+    rake.position.set(p2.x + 3 * hz.size, 1.1, p2.z);
+    group.add(rake);
+  }
+  const path = new THREE.Mesh(new THREE.PlaneGeometry(2.4, length).rotateX(-Math.PI / 2), flat('#cbd4cf'));
+  path.position.set(-hole.width * 14 - 7, 0.02, -length / 2);
+  group.add(path);
 
   const you = new Figure({ shirt: '#5aa8ea' });
   stage.world.add(you.root);

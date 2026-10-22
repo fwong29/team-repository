@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { flat } from './stage.js';
 import { Figure } from './figure.js';
-import { stand, floodlight, board } from './stadium3d.js';
+import { stand, floodlight, board, clouds, hills, bench, banner } from './stadium3d.js';
 
 export function buildBaseball(stage) {
   stage.sky('#8fd2f0', '#dcf1fb');
@@ -61,7 +61,55 @@ export function buildBaseball(stage) {
     bank.lookAt(0, 6, -20);
     group.add(bank);
   }
-  group.add(floodlight(-62, -78, 26), floodlight(62, -78, 26));
+  group.add(floodlight(-62, -78, 26), floodlight(62, -78, 26),
+            floodlight(-88, -20, 24), floodlight(88, -20, 24));
+
+  // A warning track between the grass and the wall, so the wall is not an
+  // edge the outfield just stops at.
+  const track = new THREE.Mesh(new THREE.RingGeometry(86, 92, 48, 1, Math.PI * 0.75, Math.PI * 1.5)
+    .rotateX(-Math.PI / 2), flat('#e0b081'));
+  track.position.y = 0.02;
+  track.receiveShadow = true;
+  group.add(track);
+
+  // Padding and banners along the wall.
+  for (let i = 0; i < 9; i++) {
+    const a = Math.PI * 0.8 + (i / 8) * Math.PI * 1.4;
+    const b = banner(10, 2.4, ['#ef6a5a', '#5aa8ea', '#f6d98a', '#b6e0a4'][i % 4]);
+    b.position.set(Math.cos(a) * 91.5, 2.2, Math.sin(a) * 91.5);
+    b.lookAt(0, 2.2, -20);
+    group.add(b);
+  }
+
+  // Foul poles at the corners of the wall.
+  for (const s2 of [-1, 1]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 16, 8), flat('#f7c744'));
+    pole.position.set(s2 * 64, 8, -64);
+    pole.castShadow = true;
+    group.add(pole);
+  }
+
+  // Dugouts down both lines, with a bench of players in each.
+  for (const s2 of [-1, 1]) {
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(14, 0.4, 4), flat('#b4c7d6'));
+    roof.position.set(s2 * 22, 2.4, -6);
+    roof.castShadow = true;
+    group.add(roof);
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(14, 2.4, 0.4), flat('#cfdde8'));
+    backWall.position.set(s2 * 22, 1.2, -7.8);
+    group.add(backWall);
+    const dug = bench(11, { seats: 5, seed: 40 + s2, shirt: s2 > 0 ? '#ffffff' : '#f4a9a0' });
+    dug.position.set(s2 * 22, 0, -6.6);
+    group.add(dug);
+  }
+
+  // The on-deck circle, where the next batter waits.
+  const onDeck = new THREE.Mesh(new THREE.CircleGeometry(1.6, 20).rotateX(-Math.PI / 2), flat('#e0b081'));
+  onDeck.position.set(-7, 0.03, -2);
+  group.add(onDeck);
+
+  stage.world.add(clouds({ count: 14, seed: 17, height: 95, spread: 320 }));
+  stage.world.add(hills({ radius: 260, count: 18, seed: 23, colour: '#6cb152' }));
   group.add(board(20, 8, 0, 10, -97));
 
   // You at the plate, the pitcher on the mound, two fielders.
