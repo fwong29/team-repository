@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Sports — 3D harness</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #dcf1fb;
+                 font-family: system-ui, sans-serif; }
+    #view { display: block; width: 100vw; height: 100vh; }
+    #bar { position: fixed; left: 12px; top: 12px; z-index: 2; display: flex; gap: 6px; }
+    button { font: 12px system-ui; padding: 6px 11px; border-radius: 6px; cursor: pointer;
+             border: 1px solid rgba(45,59,69,.3); background: #fff; color: #2d3b45; }
+  </style>
+</head>
+<body>
+  <!--
+    The 3D harness: the stage, the figure and a sport's scene with no camera
+    and no Arduino. Buttons fire the same authored poses the real game plays,
+    so the look can be worked on without hardware.
+  -->
+  <canvas id="view"></canvas>
+  <div id="bar"></div>
+
+  <script type="importmap">
+    { "imports": { "three": "../vendor/three/three.module.js" } }
+  </script>
+  <script type="module">
+    import { Stage } from '../three/stage.js';
+    import { buildTennis } from '../three/tennis3d.js';
+
+    const stage = new Stage(document.querySelector('#view'));
+    const court = buildTennis(stage);
+
+    // A stand-in tracked body: hands drifting gently, so the damped arm
+    // follower has something to follow.
+    let clock = 0;
+    const mockBody = () => ({
+      ok: true,
+      centre: { x: 0.5, y: 0.4 },
+      calib: { shoulderSpan: 0.2, armLength: 0.28 },
+      hands: {
+        left: { x: 0.38, y: 0.52 + Math.sin(clock) * 0.02, visible: true,
+                extension: 0.55, acrossBody: -0.5 },
+        right: { x: 0.64, y: 0.46 + Math.cos(clock * 1.1) * 0.03, visible: true,
+                 extension: 0.7, acrossBody: 0.6 },
+      },
+    });
+
+    for (const [label, fn] of Object.entries({
+      swing: () => court.you.play('swing', 0.6),
+      golf: () => court.you.play('golf', 0.7),
+      punch: () => court.you.play('punch', 0.4),
+      shoot: () => court.you.play('shoot', 0.6),
+    })) {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.onclick = fn;
+      document.querySelector('#bar').append(b);
+    }
+
+    let last = performance.now();
+    let t = 0;
+    function frame(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      clock += dt;
+      t += dt * 0.5;
+
+      const body = mockBody();
+      court.you.update(dt, body, { facing: 0 });
+      court.them.update(dt, null, { facing: Math.PI });
+      // A ball looping over the net, so height and the shadow blob are visible.
+      court.ballAt(Math.sin(t) * 2, 1.4 + Math.sin(t * 2) * 1.1, Math.cos(t) * 8);
+      court.frame(stage, 0.5);
+      stage.render();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    window.__court = court;
+  </script>
+</body>
+</html>
