@@ -6,6 +6,7 @@
 // the court, which changes how early you have to swing.
 
 import { PALETTE, text, drawScorebar, drawMeter, drawAvatar, roundRect } from '../ui.js';
+import { layer, stand, scoreboard } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { Sound } from '../audio.js';
 
@@ -168,33 +169,140 @@ export const tennis = {
         if (b.owner === 'far' && b.y < 0.03) { point(twoPlayer ? 0 : 0); }
       },
 
+      // The court and the stadium around it. Static, so drawn once.
+      court(w, h) {
+        return layer('tennis-court', w, h, (c) => {
+          const backY = h * 0.14;
+
+          // Stands wrapping the back of the court.
+          c.fillStyle = '#1a1f28';
+          c.fillRect(0, 0, w, backY);
+          stand(c, 0, 0, w, backY * 0.92, { seed: 101, rows: 6, deck: '#232834', dim: 0.08 });
+
+          // The surround, then the court itself inside it.
+          c.fillStyle = '#2e6a4f';
+          c.fillRect(0, backY, w, h - backY);
+
+          // Court corners, near wide and far narrow.
+          const nx0 = w * 0.06, nx1 = w * 0.94, fx0 = w * 0.355, fx1 = w * 0.645;
+          const at = (t, u) => ({                       // t: 0 near .. 1 far, u: 0 left .. 1 right
+            x: lerp(lerp(nx0, nx1, u), lerp(fx0, fx1, u), t),
+            y: lerp(h * 1.0, backY + h * 0.02, t),
+          });
+          c.fillStyle = '#3f6f9e';
+          c.beginPath();
+          const a = at(0, 0), b = at(0, 1), d = at(1, 1), e = at(1, 0);
+          c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.lineTo(d.x, d.y); c.lineTo(e.x, e.y);
+          c.closePath();
+          c.fill();
+
+          const paint = (pts, width = 3) => {
+            c.strokeStyle = 'rgba(255,255,255,0.88)';
+            c.lineWidth = width;
+            c.beginPath();
+            pts.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+            c.stroke();
+          };
+
+          // Tramlines down both sides, then the singles lines inside them.
+          paint([at(0, 0), at(1, 0)]);
+          paint([at(0, 1), at(1, 1)]);
+          paint([at(0, 0.11), at(1, 0.11)]);
+          paint([at(0, 0.89), at(1, 0.89)]);
+          // Baselines.
+          paint([at(0.02, 0), at(0.02, 1)]);
+          paint([at(0.98, 0), at(0.98, 1)]);
+          // Service lines and the centre service line.
+          paint([at(0.3, 0.11), at(0.3, 0.89)], 2.5);
+          paint([at(0.7, 0.11), at(0.7, 0.89)], 2.5);
+          paint([at(0.3, 0.5), at(0.7, 0.5)], 2.5);
+
+          // The net: posts, mesh, and the white band along the top.
+          const netL = at(0.5, 0), netR = at(0.5, 1);
+          const netTop = netL.y - h * 0.085;
+          c.save();
+          c.strokeStyle = 'rgba(240,244,248,0.4)';
+          c.lineWidth = 1;
+          for (let i = 0; i <= 54; i++) {               // vertical mesh
+            const x = lerp(netL.x, netR.x, i / 54);
+            c.beginPath();
+            c.moveTo(x, netTop + h * 0.012);
+            c.lineTo(x, netL.y);
+            c.stroke();
+          }
+          for (let i = 0; i <= 7; i++) {                // horizontal mesh
+            const y = lerp(netTop + h * 0.012, netL.y, i / 7);
+            c.beginPath();
+            c.moveTo(netL.x, y);
+            c.lineTo(netR.x, y);
+            c.stroke();
+          }
+          c.restore();
+          c.fillStyle = '#f2efe9';                      // the band
+          c.fillRect(netL.x, netTop, netR.x - netL.x, h * 0.014);
+          c.fillStyle = '#2a2f3a';                      // posts
+          c.fillRect(netL.x - 7, netTop, 7, h * 0.1);
+          c.fillRect(netR.x, netTop, 7, h * 0.1);
+
+          // Umpire's chair, off to one side.
+          const chairX = netR.x + w * 0.05;
+          c.fillStyle = '#2a2f3a';
+          c.fillRect(chairX - 4, netTop - h * 0.1, 8, h * 0.19);
+          c.fillRect(chairX + 20, netTop - h * 0.1, 8, h * 0.19);
+          c.fillStyle = '#39414f';
+          roundRect(c, chairX - 10, netTop - h * 0.14, 44, h * 0.05, 5);
+          c.fill();
+          c.fillStyle = '#f0cba8';
+          c.beginPath();
+          c.arc(chairX + 12, netTop - h * 0.155, 9, 0, Math.PI * 2);
+          c.fill();
+        });
+      },
+
       draw(ctx, w, h) {
         const shake = state.shake * 6;
         ctx.save();
         ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
 
-        // Court: a trapezoid, wide at the near end.
-        ctx.fillStyle = PALETTE.court;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.1, h);
-        ctx.lineTo(w * 0.9, h);
-        ctx.lineTo(w * 0.66, h * 0.16);
-        ctx.lineTo(w * 0.34, h * 0.16);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(w * 0.22, h * 0.56);
-        ctx.lineTo(w * 0.78, h * 0.56);
-        ctx.stroke();
+        ctx.drawImage(this.court(w, h), 0, 0, w, h);
 
-        const farY = h * 0.2;
-        ctx.fillStyle = PALETTE.red;
+        // The far-side player, small with distance and leaning into the ball.
+        const farY = h * 0.26;
+        const fx = w * state.farX;
+        const lean = clamp((state.ball.x - state.farX) * 2, -1, 1);
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath();
-        ctx.arc(w * state.farX, farY, 16, 0, Math.PI * 2);
+        ctx.ellipse(fx, farY + 30, 18, 5, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = '#2f3a4a';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(fx - 4, farY + 10);
+        ctx.lineTo(fx - 9, farY + 30);
+        ctx.moveTo(fx + 4, farY + 10);
+        ctx.lineTo(fx + 9, farY + 30);
+        ctx.stroke();
+        ctx.fillStyle = PALETTE.red;
+        roundRect(ctx, fx - 11, farY - 12, 22, 26, 7);
+        ctx.fill();
+        ctx.strokeStyle = PALETTE.red;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(fx + 8, farY - 6);
+        ctx.lineTo(fx + 8 + lean * 18, farY - 16);
+        ctx.stroke();
+        ctx.strokeStyle = '#e8e4da';                 // racket
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(fx + 10 + lean * 26, farY - 21, 7, 9, lean * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#f0cba8';
+        ctx.beginPath();
+        ctx.arc(fx, farY - 20, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
 
         const nearY = h * (0.82 - state.court * 0.2);
         const body = input.player(0);
@@ -223,10 +331,19 @@ export const tennis = {
         ctx.beginPath();
         ctx.ellipse(b.x * w, b.y * h, 11, 4, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = PALETTE.gold;
+        const by = b.y * h - b.height * h * 0.12;
+        const fuzz = ctx.createRadialGradient(b.x * w - 3, by - 3, 1, b.x * w, by, 10);
+        fuzz.addColorStop(0, '#e9f58a');
+        fuzz.addColorStop(1, '#c6d436');
+        ctx.fillStyle = fuzz;
         ctx.beginPath();
-        ctx.arc(b.x * w, b.y * h - b.height * h * 0.12, 9, 0, Math.PI * 2);
+        ctx.arc(b.x * w, by, 9, 0, Math.PI * 2);
         ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(b.x * w - 7, by, 9, -0.7, 0.7);
+        ctx.stroke();
         ctx.restore();
 
         drawScorebar(ctx, w, { name: 'You', score: state.scores[0] },

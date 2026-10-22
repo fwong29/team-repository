@@ -7,6 +7,7 @@
 // hard to one side is a dodge.
 
 import { PALETTE, text, drawMeter, drawAvatar, roundRect } from '../ui.js';
+import { layer, crowd, rng } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { Sound } from '../audio.js';
 
@@ -149,21 +150,112 @@ export const boxing = {
         }
       },
 
-      draw(ctx, w, h) {
-        // Ring.
-        const g = ctx.createLinearGradient(0, 0, 0, h);
-        g.addColorStop(0, '#1b2230');
-        g.addColorStop(1, '#2d1f28');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, w, h);
-        ctx.strokeStyle = 'rgba(242,239,233,0.25)';
-        ctx.lineWidth = 3;
+      // The arena, the ring and the far ropes. Static, so it is drawn once.
+      backdrop(w, h) {
+        return layer('ring', w, h, (c) => {
+          // A dark hall: the crowd is lit only by spill from the ring.
+          c.fillStyle = '#0a0b10';
+          c.fillRect(0, 0, w, h);
+          crowd(c, 0, h * 0.02, w, h * 0.3, { seed: 77, rows: 8, dim: 0.62, warm: true });
+          c.fillStyle = 'rgba(8,9,14,0.55)';
+          c.fillRect(0, 0, w, h * 0.34);
+
+          // Spotlight cones from the rig above.
+          for (const sx of [w * 0.26, w * 0.5, w * 0.74]) {
+            const cone = c.createLinearGradient(sx, 0, sx, h * 0.8);
+            cone.addColorStop(0, 'rgba(255,244,214,0.16)');
+            cone.addColorStop(1, 'rgba(255,244,214,0)');
+            c.fillStyle = cone;
+            c.beginPath();
+            c.moveTo(sx - 26, 0);
+            c.lineTo(sx + 26, 0);
+            c.lineTo(sx + w * 0.26, h * 0.8);
+            c.lineTo(sx - w * 0.26, h * 0.8);
+            c.closePath();
+            c.fill();
+          }
+
+          // The canvas, in perspective: narrow at the back, wide at the front.
+          const backY = h * 0.34, frontY = h * 1.04;
+          c.fillStyle = '#4e6c93';
+          c.beginPath();
+          c.moveTo(w * 0.17, backY);
+          c.lineTo(w * 0.83, backY);
+          c.lineTo(w * 1.16, frontY);
+          c.lineTo(-w * 0.16, frontY);
+          c.closePath();
+          c.fill();
+
+          // Scuff on the canvas, so it is not a flat blue field.
+          const r = rng(9);
+          c.globalAlpha = 0.025;
+          c.fillStyle = '#ffffff';
+          for (let i = 0; i < 90; i++) {
+            const t = r();
+            const yy = backY + (frontY - backY) * t;
+            const halfWidth = w * (0.33 + t * 0.49);
+            c.beginPath();
+            c.ellipse(w / 2 + (r() - 0.5) * halfWidth * 2, yy, 20 + r() * 50, 4 + r() * 6, 0, 0, Math.PI * 2);
+            c.fill();
+          }
+          c.globalAlpha = 1;
+
+          // The apron skirt hanging off the front edge.
+          c.fillStyle = '#2b3550';
+          c.fillRect(-w * 0.16, h * 0.995, w * 1.32, h * 0.1);
+          c.fillStyle = 'rgba(255,255,255,0.06)';
+          c.fillRect(-w * 0.16, h * 0.995, w * 1.32, 3);
+
+          // Back ropes and the two far posts.
+          const post = (x, colour) => {
+            c.fillStyle = '#20252f';
+            c.fillRect(x - 7, backY - h * 0.26, 14, h * 0.28);
+            c.fillStyle = colour;                       // turnbuckle padding
+            for (let i = 0; i < 3; i++) {
+              roundRect(c, x - 11, backY - h * 0.23 + i * h * 0.075, 22, h * 0.05, 5);
+              c.fill();
+            }
+          };
+          const rope = (y, x0, x1, sag) => {
+            c.strokeStyle = '#e6e2d8';
+            c.lineWidth = 4;
+            c.beginPath();
+            c.moveTo(x0, y);
+            c.quadraticCurveTo((x0 + x1) / 2, y + sag, x1, y);
+            c.stroke();
+          };
+          for (let i = 0; i < 3; i++) rope(backY - h * 0.2 + i * h * 0.075, w * 0.17, w * 0.83, 5);
+          post(w * 0.17, '#c4473a');
+          post(w * 0.83, '#3f6fa8');
+        });
+      },
+
+      // The near ropes, drawn after the boxers so they are genuinely in front.
+      foreground(ctx, w, h) {
+        const y0 = h * 0.72;
         for (let i = 0; i < 3; i++) {
+          const y = y0 + i * h * 0.1;
+          ctx.strokeStyle = i === 1 ? '#efe9dc' : '#ddd6c8';
+          ctx.lineWidth = 7 + i * 2;
           ctx.beginPath();
-          ctx.moveTo(0, h * (0.58 + i * 0.1));
-          ctx.lineTo(w, h * (0.58 + i * 0.1));
+          ctx.moveTo(-w * 0.05, y);
+          ctx.quadraticCurveTo(w / 2, y + 12 + i * 4, w * 1.05, y);
           ctx.stroke();
         }
+        // Near posts at the corners of the frame.
+        for (const [x, colour] of [[w * 0.02, '#c4473a'], [w * 0.98, '#3f6fa8']]) {
+          ctx.fillStyle = '#20252f';
+          ctx.fillRect(x - 13, h * 0.58, 26, h * 0.45);
+          ctx.fillStyle = colour;
+          for (let i = 0; i < 3; i++) {
+            roundRect(ctx, x - 19, h * 0.69 + i * h * 0.1, 38, h * 0.07, 7);
+            ctx.fill();
+          }
+        }
+      },
+
+      draw(ctx, w, h) {
+        ctx.drawImage(this.backdrop(w, h), 0, 0, w, h);
 
         // The opponent, bobbing, and winding up in red when an attack is coming.
         const bobY = Math.sin(state.bob) * 8;
@@ -174,6 +266,29 @@ export const boxing = {
           ctx.globalAlpha = 1;
           ctx.translate((Math.random() - 0.5) * state.hitFlash * 14, 0);
         }
+        // Legs and boots, so the challenger stands on the canvas.
+        ctx.strokeStyle = '#2f3a4a';
+        ctx.lineWidth = 26;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx - 26, cy + 96);
+        ctx.lineTo(cx - 34, cy + 160);
+        ctx.moveTo(cx + 26, cy + 96);
+        ctx.lineTo(cx + 34, cy + 160);
+        ctx.stroke();
+        ctx.fillStyle = '#c4473a';
+        roundRect(ctx, cx - 50, cy + 160, 34, 20, 6);
+        ctx.fill();
+        roundRect(ctx, cx + 16, cy + 160, 34, 20, 6);
+        ctx.fill();
+
+        // Trunks.
+        ctx.fillStyle = state.windup > 0 ? '#a33b30' : '#3f4a63';
+        roundRect(ctx, cx - 44, cy + 72, 88, 48, 12);
+        ctx.fill();
+        ctx.fillStyle = '#e7c15c';
+        ctx.fillRect(cx - 44, cy + 74, 88, 7);
+
         ctx.fillStyle = state.windup > 0 ? PALETTE.red : '#8f5c52';
         roundRect(ctx, cx - 62, cy - 40, 124, 150, 26);
         ctx.fill();
@@ -202,6 +317,8 @@ export const boxing = {
 
         const me = input.player(0);
         if (me?.ok) drawAvatar(ctx, me, { x: w * 0.5, y: h * 1.32, height: h * 0.66 });
+
+        this.foreground(ctx, w, h);
 
         if (state.hurtFlash > 0) {
           ctx.fillStyle = `rgba(212,96,79,${state.hurtFlash * 0.4})`;
