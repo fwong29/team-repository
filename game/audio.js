@@ -9,9 +9,14 @@ let ctx = null;
 let master = null;
 let muted = false;
 
+// Returns null where there is no Web Audio at all: a locked-down browser, or
+// a test runner with no DOM. Every sound below checks, so the game plays on
+// in silence rather than throwing from inside a game loop.
 function wake() {
+  const Ctor = typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext);
+  if (!Ctor) return null;
   if (!ctx) {
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx = new Ctor();
     master = ctx.createGain();
     master.gain.value = 0.32;
     master.connect(ctx.destination);
@@ -23,6 +28,7 @@ function wake() {
 function tone({ freq = 440, to = freq, dur = 0.18, type = 'sine', gain = 0.6, delay = 0 }) {
   if (muted) return;
   const c = wake();
+  if (!c) return;
   const t = c.currentTime + delay;
   const osc = c.createOscillator();
   const env = c.createGain();
@@ -41,6 +47,7 @@ function tone({ freq = 440, to = freq, dur = 0.18, type = 'sine', gain = 0.6, de
 function noise({ dur = 0.2, gain = 0.5, from = 2600, to = 320, q = 1.1, delay = 0 }) {
   if (muted) return;
   const c = wake();
+  if (!c) return;
   const t = c.currentTime + delay;
   const frames = Math.ceil(c.sampleRate * dur);
   const buffer = c.createBuffer(1, frames, c.sampleRate);

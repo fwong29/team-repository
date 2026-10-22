@@ -84,6 +84,9 @@ export const boxing = {
     }
 
     return {
+      // The whole game in one object. The 2D draw() below and the 3D
+      // scene both read it; neither owns it.
+      get state() { return state; },
       get done() { return state.done; },
       get result() {
         return {

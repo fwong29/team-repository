@@ -207,6 +207,12 @@ export const golf = {
     }
 
     return {
+      // The whole game in one object. The 2D draw() below and the 3D
+      // scene both read it; neither owns it.
+      get state() { return state; },
+      // The hole being played, so a renderer can build it.
+      get hole() { return HOLES[Math.min(state.hole, HOLES.length - 1)]; },
+      get holeCount() { return HOLES.length; },
       get done() { return state.done; },
       get result() {
         const par = HOLES.reduce((a, b) => a + b.par, 0);

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion Sports</title>
+  <link rel="icon" href="data:,">
+  <style>
+    html, body { margin: 0; height: 100%; background: #eaf4fa; overflow: hidden;
+                 font-family: system-ui, -apple-system, sans-serif; }
+    /* Two layers: the sport in WebGL, the menus and the HUD flat on top. */
+    #view, #hud { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+    #hud { pointer-events: none; }
+    #camera { position: fixed; width: 2px; height: 2px; opacity: 0; pointer-events: none; }
+    #start { position: fixed; left: 50%; top: 58%; transform: translate(-50%, -50%); z-index: 3;
+             font: 17px/1.2 system-ui, sans-serif; padding: 15px 30px; border-radius: 8px;
+             border: 2px solid #2d3b45; background: #fff; color: #2d3b45; cursor: pointer; }
+    #start:hover { background: #dcf1fb; }
+    #start:disabled { opacity: 0.6; cursor: wait; }
+    #status { position: fixed; left: 50%; bottom: 7%; transform: translateX(-50%); z-index: 3;
+              margin: 0; max-width: 70vw; text-align: center; font-size: 13px; line-height: 1.5;
+              color: #6d8291; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+  <canvas id="hud"></canvas>
+  <video id="camera" playsinline muted></video>
+  <button id="start">Start the camera</button>
+  <p id="status" hidden></p>
+
+  <script type="importmap">
+    { "imports": { "three": "./game/vendor/three/three.module.js" } }
+  </script>
+  <script type="module" src="game/three/main3d.js"></script>
+</body>
+</html>

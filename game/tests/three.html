@@ -28,12 +28,30 @@
   <script type="module">
     import { Stage } from '../three/stage.js';
     import { buildTennis } from '../three/tennis3d.js';
+    import { buildGolf } from '../three/golf3d.js';
+    import { buildBaseball } from '../three/baseball3d.js';
+    import { buildBasketball } from '../three/basketball3d.js';
+    import { buildBoxing } from '../three/boxing3d.js';
+
+    // One straight hole and one dogleg, enough to prove the ribbon bends.
+    const HOLE = { name: 'Elbow Right', length: 340, par: 4, bend: 0.62, bendAt: 0.35,
+                   width: 0.5, rise: 0,
+                   hazards: [{ at: 0.6, off: 0.72, size: 1.1, kind: 'water' },
+                             { at: 0.42, off: -0.7, size: 0.9, kind: 'trees' }] };
 
     const stage = new Stage(document.querySelector('#view'));
-    const court = buildTennis(stage);
+    const which = new URLSearchParams(location.search).get('scene') || 'tennis';
 
-    // A stand-in tracked body: hands drifting gently, so the damped arm
-    // follower has something to follow.
+    const BUILD = {
+      tennis: () => buildTennis(stage),
+      golf: () => buildGolf(stage, HOLE),
+      baseball: () => buildBaseball(stage),
+      basketball: () => buildBasketball(stage),
+      boxing: () => buildBoxing(stage),
+    };
+    const scene = (BUILD[which] || BUILD.tennis)();
+
+    // A stand-in tracked body, so the damped arm follower has something to do.
     let clock = 0;
     const mockBody = () => ({
       ok: true,
@@ -48,10 +66,10 @@
     });
 
     for (const [label, fn] of Object.entries({
-      swing: () => court.you.play('swing', 0.6),
-      golf: () => court.you.play('golf', 0.7),
-      punch: () => court.you.play('punch', 0.4),
-      shoot: () => court.you.play('shoot', 0.6),
+      swing: () => scene.you.play('swing', 0.6),
+      golf: () => scene.you.play('golf', 0.7),
+      punch: () => scene.you.play('punch', 0.4),
+      shoot: () => scene.you.play('shoot', 0.6),
     })) {
       const b = document.createElement('button');
       b.textContent = label;
@@ -66,18 +84,37 @@
       last = now;
       clock += dt;
       t += dt * 0.5;
-
       const body = mockBody();
-      court.you.update(dt, body, { facing: 0 });
-      court.them.update(dt, null, { facing: Math.PI });
-      // A ball looping over the net, so height and the shadow blob are visible.
-      court.ballAt(Math.sin(t) * 2, 1.4 + Math.sin(t * 2) * 1.1, Math.cos(t) * 8);
-      court.frame(stage, 0.5);
+
+      scene.you.update(dt, body, { facing: 0 });
+      scene.them?.update(dt, null, { facing: Math.PI });
+      scene.pitcher?.update(dt, null, { facing: 0 });
+      scene.fielders?.forEach(f => f.update(dt, null, { facing: 0 }));
+
+      if (which === 'tennis') {
+        scene.ballAt(Math.sin(t) * 2, 1.4 + Math.sin(t * 2) * 1.1, Math.cos(t) * 8);
+        scene.frame(stage, 0.5);
+      } else if (which === 'golf') {
+        scene.standAt(0.04, 0);
+        scene.ballAt(0.04, 0, 0);
+        scene.frame(stage, 0.04);
+      } else if (which === 'baseball') {
+        const p = (t % 1);
+        scene.ballAt(0, 1.6 - p * 0.5, -18 + p * 17);
+        scene.frame(stage);
+      } else if (which === 'basketball') {
+        scene.standAt(0.45);
+        scene.ballAt(0.4, 1.3 + Math.sin(t * 2) * 0.3, -4.5);
+        scene.frame(stage, 0.45);
+      } else {
+        scene.frame(stage);
+      }
+
       stage.render();
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
-    window.__court = court;
+    window.__scene = scene;
   </script>
 </body>
 </html>
