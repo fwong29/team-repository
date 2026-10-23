@@ -3,12 +3,15 @@
 // cartoon figure the player drives, drawn from the pose landmarks with nothing
 // but arcs and rounded rectangles.
 //
-// All art here is drawn in code. There are no image files in this project.
+// All art here is drawn in code. Image files are optional and live in
+// game/assets/; see sprites.js. When one is absent, which is the state of a
+// fresh clone, the drawn version below is what you see.
 
 import { CONFIG } from './config.js';
 import { clamp, lerp } from './filters.js';
 import { L, BONES } from './tracker.js';
 import { Sound } from './audio.js';
+import { drawSpriteAt, spriteReport } from './sprites.js';
 
 export const PALETTE = {
   // Bright, flat and high-key. Everything is a solid fill; there is no grain,
@@ -186,7 +189,10 @@ export function drawTile(ctx, tile, { hovered = false, dwell = 0 } = {}) {
   ctx.lineWidth = hovered ? 3 : 2;
   ctx.stroke();
 
-  if (tile.icon) tile.icon(ctx, tile.x + tile.w / 2, tile.y + tile.h * 0.37, tile.w * 0.26);
+  // A sprite named for this tile wins; otherwise the sport draws its own icon.
+  const iconX = tile.x + tile.w / 2, iconY = tile.y + tile.h * 0.37, iconR = tile.w * 0.26;
+  const drew = drawSpriteAt(ctx, tile.sprite || `icon/${tile.id}`, iconX, iconY, iconR);
+  if (!drew && tile.icon) tile.icon(ctx, iconX, iconY, iconR);
   text(ctx, tile.label, tile.x + tile.w / 2, tile.y + tile.h * 0.74, { size: Math.max(15, tile.w * 0.1), weight: 600 });
   if (tile.note) {
     text(ctx, tile.note, tile.x + tile.w / 2, tile.y + tile.h * 0.88,
@@ -437,12 +443,14 @@ export function drawDebug(ctx, w, h, { input, tracker, ultrasonic, video, events
     }
   }
 
+  const sprites = spriteReport();
   const lines = [
     `pose fps   ${tracker.fps}`,
     `bodies     ${input.playerCount}`,
     `distance   ${input.distanceCm.toFixed(0)} cm (${input.distanceFrom})`,
     `sensor     ${ultrasonic.connected ? (ultrasonic.fresh ? ultrasonic.rawLine : 'stale') : 'not connected'}`,
     `depth01    ${input.depth01.toFixed(2)}`,
+    `sprites    ${sprites.loaded}/${sprites.total} loaded`,
     ...events.slice(-3).map(e => `event      ${e.type} ${e.side || e.zone || ''}`),
   ];
   ctx.fillStyle = 'rgba(0,0,0,0.72)';

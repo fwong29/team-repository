@@ -10,6 +10,7 @@ import { layer, stand, scoreboard } from '../scenery.js';
 import { clamp, lerp } from '../filters.js';
 import { CONFIG } from '../config.js';
 import { Sound } from '../audio.js';
+import { drawSprite, spriteRevision } from '../sprites.js';
 
 const WIN = 5;
 
@@ -181,8 +182,14 @@ export const tennis = {
       },
 
       // The court and the stadium around it. Static, so drawn once.
+      //
+      // A court-tennis.png in game/assets/ replaces the whole picture. The
+      // revision goes in the cache key so a file that decodes after the first
+      // frame still appears, instead of waiting for a window resize.
       court(w, h) {
-        return layer('tennis-court', w, h, (c) => {
+        return layer(`tennis-court-${spriteRevision()}`, w, h, (c) => {
+          if (drawSprite(c, 'court/tennis', 0, 0, w, h, { fit: 'cover' })) return;
+
           const backY = h * 0.14;
 
           // Stands wrapping the back of the court.

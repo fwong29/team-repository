@@ -15,6 +15,7 @@ import {
   drawBanner, drawAvatar, drawDebug,
 } from './ui.js';
 import { clamp } from './filters.js';
+import { loadSprites } from './sprites.js';
 
 import { tennis } from './sports/tennis.js';
 import { boxing } from './sports/boxing.js';
@@ -426,4 +427,10 @@ async function boot() {
 }
 
 startButton.addEventListener('click', boot);
+
+// Optional image art, started now rather than on the click: the menu is a few
+// seconds away and a sprite that lands late just appears. Nothing waits on it,
+// and an empty game/assets/ is a normal result, not a failure.
+loadSprites();
+
 requestAnimationFrame(frame);

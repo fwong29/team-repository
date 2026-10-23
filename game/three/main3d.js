@@ -14,6 +14,7 @@ import { Input, Calibration } from '../input.js';
 import { Sound } from '../audio.js';
 import { PALETTE, Cursor, Toasts, text, roundRect, menuTiles, drawTile, drawBanner, drawMeter } from '../ui.js';
 import { clamp, lerp } from '../filters.js';
+import { loadSprites } from '../sprites.js';
 import { holeMap, swingBar, readout, windDial, panel } from './hud3d.js';
 
 import { Stage } from './stage.js';
@@ -437,4 +438,9 @@ async function boot() {
 }
 
 startButton.addEventListener('click', boot);
+
+// The menu here is the same 2D menu, so the tile sprites apply. The 3D scenes
+// are built from geometry and take no sprites at all.
+loadSprites();
+
 requestAnimationFrame(frame);
