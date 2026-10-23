@@ -25,9 +25,22 @@ const SIGNALS = {
   // echo does not count as somebody leaving.
   present: r => (r.cm !== undefined && r.cm < 150 ? 1 : 0),
 
-  // Your signal goes here. A photoresistor printed as "light":
-  //   shade: r => (r.light === undefined ? 0 : clamp(1 - r.light / 1023)),
+  // still: 1 when the distance is not changing, 0 when it is changing fast.
+  // The HC-SR04 gives one number, so "moving" has to come from how much that
+  // number changed since the last reading, about 50 ms earlier. 4 cm in 50 ms
+  // (about 0.8 m/s) reads as fully moving. An empty room sits at cm 400.0 and
+  // so reads as perfectly still, which is why every row that uses still also
+  // asks for present.
+  still: r => {
+    if (r.cm === undefined) return 0;
+    const last = previousCm;
+    previousCm = r.cm;
+    if (last === null) return 0; // nothing to compare the first reading to
+    return clamp(1 - Math.abs(r.cm - last) / 4);
+  },
 };
+
+let previousCm = null; // the cm from the reading before this one, for still
 
 function clamp(x) {
   return Math.min(1, Math.max(0, x));
