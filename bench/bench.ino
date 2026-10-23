@@ -9,19 +9,24 @@
 // That is all it does. The meaning (the signals, the State Table, the piece) is
 // built in the browser by bench/sense-serial.js, the same as the camera pairs.
 //
-// Wired for an HC-SR04 ultrasonic sensor on an Arduino Nano:
-//   VCC -> 5V    GND -> GND    TRIG -> D9    ECHO -> D10
-// To add a second sensor, read it in loop() and print it on the same line,
-// before the println, e.g. a photoresistor divider on A0:
-//   Serial.print(" light "); Serial.print(analogRead(A0));
+// Two sensors on one Nano, one per partner:
+//   Ford  - HC-SR04 ultrasonic:  VCC -> 5V  GND -> GND  TRIG -> D9  ECHO -> D10
+//   Ethan - PIR motion (HC-SR501): VCC -> 5V  GND -> GND  OUT -> D2
+//
+// It prints both on one line, e.g.
+//   cm 42.5 motion 1
+// Swapping Ethan's sensor is two lines: read it below and print its own name
+// here, then write a signal function of that name in bench/sense-serial.js.
 
 const int TRIG = 9;
 const int ECHO = 10;
+const int PIR = 2;             // Ethan's PIR motion sensor, OUT on D2
 
 void setup() {
   Serial.begin(115200);          // sense-serial.js opens the port at this speed
   pinMode(TRIG, OUTPUT);
   pinMode(ECHO, INPUT);
+  pinMode(PIR, INPUT);
 }
 
 void loop() {
@@ -34,8 +39,14 @@ void loop() {
   unsigned long us = pulseIn(ECHO, HIGH, 30000);
   float cm = us ? us / 58.0 : 400.0; // nothing in range reads as far away
 
+  // The PIR holds its output HIGH for a few seconds after it sees movement,
+  // so this is 1 for a moment after someone stops moving, not only while they do.
+  int motion = digitalRead(PIR);
+
   Serial.print("cm ");
   Serial.print(cm, 1);
+  Serial.print(" motion ");
+  Serial.print(motion);
   Serial.println();
 
   delay(50);                     // about 20 readings a second

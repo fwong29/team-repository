@@ -25,8 +25,11 @@ const SIGNALS = {
   // echo does not count as somebody leaving.
   present: r => (r.cm !== undefined && r.cm < 150 ? 1 : 0),
 
-  // Your signal goes here. A photoresistor printed as "light":
-  //   shade: r => (r.light === undefined ? 0 : clamp(1 - r.light / 1023)),
+  // Ethan's PIR, printed as "motion". 1 while it sees movement, and for a few
+  // seconds after. still is its opposite: nothing is moving in front of it.
+  // On its own that is also true of an empty room, so the table pairs still
+  // with present to mean "someone is there and holding themselves still".
+  still: r => (r.motion === undefined ? 0 : (r.motion > 0.5 ? 0 : 1)),
 };
 
 function clamp(x) {
