@@ -72,3 +72,14 @@ The instrument is MediaPipe Face Landmarker, pinned to version 1.1.1, the same o
 Sensor: HC-SR04 ultrasonic distance sensor
 
 Live: https://fwong29.github.io/team-repository/
+
+## Break log
+
+- Fri Oct 23: Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
+- Fri Oct 23: Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
+
+## Build
+
+![The Nano on a breadboard with the HC-SR04 ultrasonic sensor and an OLED, connected to a laptop over USB](img/wiring-overview.jpg)
+
+![Close-up of the breadboard wiring: Nano, HC-SR04 and OLED](img/wiring-closeup.jpg)
