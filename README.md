@@ -69,4 +69,6 @@ The instrument is MediaPipe Face Landmarker, pinned to version 1.1.1, the same o
 - Ethan Takher — `still`
 - Fordham Wong — `near`
 
+Sensor: HC-SR04 ultrasonic distance sensor
+
 Live: https://fwong29.github.io/team-repository/
