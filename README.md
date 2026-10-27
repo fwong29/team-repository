@@ -78,6 +78,7 @@ Live: https://fwong29.github.io/team-repository/
 - Fri Oct 23 (7eec54b): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
 - Fri Oct 23 (7eec54b): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
 - Mon Oct 26 (bdde448): the screen stayed black while the state read close / the old piece.js was not drawing / replaced it with a gradient version that follows near
+- Tue Oct 27 (40901ce): the OLED stayed blank even though the I2C scan found it at 0x3C / the Adafruit SSD1306 library would not draw on this module / switched to the U8g2 library with the SSD1306 driver
 
 ## Build
 
@@ -87,7 +88,7 @@ Live: https://fwong29.github.io/team-repository/
 
 ## Sensor and wiring
 
-Arduino Nano with two sensors on one breadboard. Photos are in the Build section above.
+Arduino Nano with two sensors and an OLED on one breadboard. The OLED shows the distance in cm. Photos are in the Build section above.
 
 | Part | Pin | Nano pin |
 |---|---|---|
@@ -98,8 +99,12 @@ Arduino Nano with two sensors on one breadboard. Photos are in the Build section
 | PIR (HC-SR501) | VCC | 5V |
 | PIR (HC-SR501) | GND | GND |
 | PIR (HC-SR501) | OUT | D2 |
+| OLED (SSD1306) | VCC | 5V |
+| OLED (SSD1306) | GND | GND |
+| OLED (SSD1306) | SCL | A5 |
+| OLED (SSD1306) | SDA | A4 |
 
-Sketch: `bench/bench.ino`. The browser side is `bench.html`, with the rows in `bench/table-bench.js`.
+Sketch: `bench/bench.ino` (the OLED uses the U8g2 library). The browser side is `bench.html`, with the rows in `bench/table-bench.js`.
 
 ## The rule
 
