@@ -36,3 +36,213 @@
   <script type="module" src="bench/sense-serial.js"></script>
 </body>
 </html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sensor Layer starter: bench</title>
+  <link rel="icon" href="data:,">
+
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #0b0b0d;
+      overflow: hidden;
+    }
+
+    #piece {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #camera {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      width: 200px;
+      transform: scaleX(-1);
+      border-radius: 4px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #camera.shown {
+      opacity: 1;
+    }
+
+    #start {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font: 16px/1.2 system-ui, sans-serif;
+      padding: 12px 20px;
+      border-radius: 6px;
+      border: 1px solid #f2efe9;
+      background: transparent;
+      color: #f2efe9;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    #start:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    pre {
+      position: fixed;
+      margin: 0;
+      padding: 10px 12px;
+      font: 12px/1.45 ui-monospace, Menlo, monospace;
+      color: #f2efe9;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 4px;
+      white-space: pre;
+    }
+
+    #readout {
+      left: 12px;
+      top: 12px;
+      z-index: 7;
+    }
+
+    #scores {
+      right: 12px;
+      top: 12px;
+      max-height: calc(100vh - 24px);
+      overflow: auto;
+    }
+
+    /* NEW: PIR measurement button. Does not cover the original display. */
+    #pirStart {
+      position: fixed;
+      left: 14px;
+      bottom: 14px;
+      z-index: 10;
+      padding: 12px 16px;
+      border: 1px solid #f2efe9;
+      border-radius: 7px;
+      background: rgba(15, 15, 18, 0.92);
+      color: #f2efe9;
+      font: 600 14px/1.3 system-ui, sans-serif;
+      cursor: pointer;
+    }
+
+    #pirStart:hover:not(:disabled) {
+      background: #292929;
+    }
+
+    #pirStart:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    /* NEW: results panel, hidden until the first measurement starts. */
+    #pirResult {
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 10;
+      width: min(300px, calc(100vw - 28px));
+      box-sizing: border-box;
+      padding: 14px 16px;
+      border: 1px solid rgba(242, 239, 233, 0.65);
+      border-radius: 8px;
+      background: rgba(12, 12, 15, 0.94);
+      color: #f2efe9;
+      font-family: system-ui, sans-serif;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    #pirResult[hidden] {
+      display: none;
+    }
+
+    #pirResultTitle {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    #pirResultText {
+      margin-top: 7px;
+      color: #dedede;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    #pirProgressTrack {
+      height: 5px;
+      margin-top: 12px;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #444;
+    }
+
+    #pirProgress {
+      width: 0%;
+      height: 100%;
+      background: #f2efe9;
+    }
+
+    @media (max-width: 520px) {
+      #pirStart {
+        left: 8px;
+        bottom: 8px;
+        max-width: 48vw;
+        padding: 10px;
+        font-size: 12px;
+      }
+
+      #pirResult {
+        right: 8px;
+        bottom: 8px;
+        width: 48vw;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Original display: keep piece.js and its colors unchanged. -->
+  <canvas id="piece"></canvas>
+
+  <video id="camera" playsinline muted></video>
+
+  <button id="start">Connect the Arduino</button>
+
+  <pre id="readout" hidden></pre>
+  <pre id="scores" hidden></pre>
+
+  <!-- NEW: start a 10-second PIR measurement. -->
+  <button id="pirStart" disabled>
+    Measure motion · 10 seconds
+  </button>
+
+  <!-- NEW: the score appears here after the measurement starts. -->
+  <section id="pirResult" hidden aria-live="polite">
+    <div id="pirResultTitle">PIR motion measurement</div>
+    <div id="pirResultText">Waiting for measurement.</div>
+
+    <div id="pirProgressTrack">
+      <div id="pirProgress"></div>
+    </div>
+  </section>
+
+  <!-- Keep the original visual files. -->
+  <script src="bench/table-bench.js"></script>
+  <script src="fake-sense.js"></script>
+  <script src="piece.js"></script>
+
+  <!-- NEW: PIR timer and score. -->
+  <script src="pir-measurement.js"></script>
+
+  <!-- USB serial reader, updated to read both distance and PIR. -->
+  <script type="module" src="bench/sense-serial.js"></script>
+</body>
+</html>
