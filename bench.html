@@ -19,6 +19,15 @@
           color: #f2efe9; background: rgba(0, 0, 0, 0.7); border-radius: 4px; white-space: pre; }
     #readout { left: 12px; top: 12px; }
     #scores { right: 12px; top: 12px; max-height: calc(100vh - 24px); overflow: auto; }
+    #motion-test { position: fixed; right: 12px; bottom: 12px; z-index: 2; width: 260px;
+                   box-sizing: border-box; padding: 10px 12px; color: #f2efe9;
+                   background: rgba(0, 0, 0, 0.82); border: 1px solid rgba(242, 239, 233, 0.35);
+                   border-radius: 4px; font: 12px/1.45 ui-monospace, Menlo, monospace; }
+    #motion-test-result { margin: 7px 0 0; white-space: pre-line; }
+    #motion-test-start { margin-top: 8px; padding: 7px 9px; border: 1px solid #f2efe9;
+                         border-radius: 4px; background: transparent; color: #f2efe9;
+                         font: inherit; cursor: pointer; }
+    #motion-test-start:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -27,6 +36,11 @@
   <button id="start">Connect the Arduino</button>
   <pre id="readout" hidden></pre>
   <pre id="scores" hidden></pre>
+  <section id="motion-test" aria-label="PIR motion test">
+    <div>PIR MOTION TEST</div>
+    <p id="motion-test-result" aria-live="polite">Connect the Arduino to enable the 10-second test.</p>
+    <button id="motion-test-start" type="button" disabled>Start 10-second test</button>
+  </section>
 
   <!-- The bench page: an Arduino over USB instead of the camera. Same order as
        index.html, with the bench table and the serial sense layer swapped in. -->
