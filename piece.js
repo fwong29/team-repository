@@ -17,14 +17,14 @@
   }
  
   function frame() {
-    const s = window.sense;
-    const near = s && s.signals && typeof s.signals.near === 'number' ? s.signals.near : 0;
-    level += (near - level) * 0.12;
+    const s = window.sense; 
+    const near = s && s.signals && typeof s.signals.near === 'number' ? s.signals.near : 0; 
+    level += (near - level) * 0.12; 
  
-    const w = canvas.width;
-    const h = canvas.height;
-    const inner = Math.round(255 * level);
-    const outer = Math.round(255 * level * 0.55);
+    const w = canvas.width; 
+    const h = canvas.height; 
+    const inner = Math.round(255 * level); 
+    const outer = Math.round(255 * level * 0.55); 
  
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7);
     g.addColorStop(0, `rgb(${inner}, ${inner}, ${inner})`);
