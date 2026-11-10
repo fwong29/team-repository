@@ -116,4 +116,4 @@ Three readings from the HC-SR04:
 
 The screen fades from black to white as the distance shrinks. Under about 38 cm it is nearly white and says NEAR, and with no one in range it is black and says FAR.
 
-![alt text](img/design.jpg)
+![alt text](img/design.jpg) 
