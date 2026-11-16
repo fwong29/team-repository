@@ -104,6 +104,8 @@ Arduino Nano with two sensors and an OLED on one breadboard. The OLED shows the 
 | OLED (SSD1306) | SCL | A5 |
 | OLED (SSD1306) | SDA | A4 |
 
+Power: the Nano runs from a 5V USB wall charger, with no laptop. The laptop is only needed for the screen in `bench.html`.
+
 Sketch: `bench/bench.ino` (the OLED uses the U8g2 library). The browser side is `bench.html`, with the rows in `bench/table-bench.js`.
 
 ## The rule
