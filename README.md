@@ -1,114 +1,149 @@
-# Sensor Layer starter
+# It sees you. It names you. It acts.
 
-Computer Coding Studio, fall 2026. The camera, the model, one worked signal and a fake sensor, so your pair starts from a piece that already runs.
+Ford Wong and Ethan Takher · Computer Coding Studio, fall 2026 · v1.0
 
-**Live:** https://flyinthelyceum.github.io/sensor-layer-starter/ (click Start the camera; press D, B, V)
+## The charter
 
-## Make it yours
-
-1. Click **Use this template**, then **Create a new repository**, under one partner's account. Add the other partner as a collaborator (Settings, Collaborators).
-2. Both partners clone it, open it in VS Code, and run it with a local server. Live Server works, or in the terminal: `python3 -m http.server`, then open `http://localhost:8000`. Opening `index.html` straight from the Finder will not reach the camera.
-3. Turn on GitHub Pages: Settings, Pages, branch `main`, folder `/ (root)`. That address is the live URL you submit.
-
-## The files
-
-| File | Job | Who edits it |
-|---|---|---|
-| `table.js` | Your State Table, row for row: the signals, the states, the rules, the holds | both of you, first |
-| `sense.js` | Reads the camera, turns readings into signals, applies the table, writes `window.sense` | each partner, your own signal |
-| `piece.js` | Reads `window.sense` every frame and answers | both of you |
-| `fake-sense.js` | Writes the same object with no camera: number keys set the state, the mouse sets the signals | only if your signal names change |
-| `index.html` | Loads them in order | rarely |
-
-## The object
-
-```js
-window.sense = {
-  state: 'here',                          // one word from your State Table
-  signals: { present: 0.98, open: 0.02 }, // each a number from 0 to 1
-  since: 184203.5                         // performance.now() when this state began
-};
+```
+It notices:    how near you are, in cm, and whether you are moving
+It calls you:  hoverer, passerby, waiting, or nobody
+It does:       says the name on its screen, in a word, and blinks that
+               name's own pattern on its light
+For them:      a visitor finds out what it called them without asking anyone,
+               because the name is the biggest thing on the screen and the
+               number it named them on is right underneath
+To them:       it answers the nearest body in front of it and ignores the
+               rest of the room
+It refuses:    to count your visits, to save a reading, or to keep anything
+               at all once it is unplugged
+The tension:   the ultrasonic hears the nearest hard surface, not you, so a
+               bag held out in front of you is named instead of you
 ```
 
-`piece.js` reads this and nothing else. It never touches the camera. That is why the piece keeps running on `fake-sense.js` when no camera is there, and why a scene you build in November can run off the sensor you build now.
+## The State Table
 
-## Adding your signal
+The names run on the Nano. The rows are checked top to bottom, the first true
+row wins, and a row has to stay true for its whole hold before the name
+changes. Four seconds of motion is not yet a passerby if passerby's hold is
+five: a rule that goes false partway through starts over.
 
-1. Add its name to `signals` in `table.js`.
-2. Add a function with the same name to `SIGNALS` in `sense.js`. It gets one frame's result and returns a number from 0 to 1. There are two patterns in the comments there: one of the 52 named scores from the lab, or geometry from the 478 points.
-3. Use it in a rule in `table.js`. Press **D** to watch the number while you set the threshold. Thresholds that move go in your break log.
+| Name | Owner | Rule | Line | Gap | Hold |
+|---|---|---|---|---|---|
+| `hoverer` | Ford | closer than the near line | 40 cm | 8 cm | 0.6 s |
+| `passerby` | Ethan | in range, and the PIR sees motion | motion 0.60 | 0.25 | 1.0 s |
+| `waiting` | ours | in range, and the PIR sees no motion | motion 0.35 | 0.25 | 1.5 s |
+| `nobody` | ours | nothing in range | 150 cm | 20 cm | 2.0 s |
 
-## Keys
+**The gap is what keeps it steady.** A line on its own flickers: a hand sitting
+at exactly 40 cm renames the piece on every reading. Each line here has a gap
+on the far side of it, so `hoverer` starts at 40 cm but does not let go until
+48, and `nobody` starts past 150 cm but does not let go until you come back
+inside 170. Between 0.35 and 0.60 on the motion reading no row is true at all,
+and the piece keeps the name it already has. On top of that the distance is the
+median of the last three echoes, so one missed echo renames nobody.
 
-- **D**: the object `piece.js` reads, live
-- **B**: all 52 named scores, to find the one you measured in the Make a Face lab
-- **V**: the camera, small, in the corner
-- **1, 2, 3 …** and the **mouse**: drive the fake sensor before the camera starts
+**The holds, and why each is what it is.** `hoverer` gets 0.6 s, the shortest,
+because that is the row a visitor is standing in front of on purpose and it
+should answer almost at once. `passerby` gets 1.0 s so that walking past the
+doorway is not enough to get named. `waiting` gets 1.5 s because the PIR holds
+its output high for seconds after movement stops, and the hold keeps the name
+from flicking on in the gap between two steps. `nobody` gets 2.0 s, the
+longest, because a single bad reading should never read as everybody leaving.
 
-## When Start does nothing useful
+**Each name answers differently**, so a stranger can tell them apart without
+being told:
 
-If the readout says the face library did not load, the school network is blocking `cdn.jsdelivr.net`. Press **D** and keep going on the fake sensor: the piece reads the same object either way. A new state you add to `table.js` gets a bright colour of its own in `piece.js` until you give it one.
+| Name | The screen | The light |
+|---|---|---|
+| `hoverer` | the word knocked out of a solid white bar, the distance in big digits | on, and it stays on |
+| `passerby` | a dot running left to right along the bottom: the trace movement leaves | fast flicker |
+| `waiting` | a row of still ticks, and the seconds you have been still | two short blinks, then a rest |
+| `nobody` | `---` where the number was, one dot drifting slowly, the word `waiting` | one short blink every three seconds |
 
-## Bench pairs: an Arduino instead of the camera
+While a new name is waiting out its hold the screen says so — `PASSERBY?` and a
+bar filling — so the pause reads as the piece deciding, not as lag.
 
-The bench track swaps the sense layer and nothing else. `piece.js` and `fake-sense.js` stay exactly as they are. The wiring, a photo of a working build and upload fixes are in `bench/README.md`.
+The same four names and the same numbers are in `bench/table-bench.js` for the
+laptop view. Change a number in one and you have to change it in the other.
 
-1. Build the circuit and flash `bench/bench.ino` from the Arduino IDE. It prints one line per reading, like `cm 42.5`. Check it in the IDE's Serial Monitor at 115200, then **close the Serial Monitor**: only one program can hold the port.
-2. Open **`bench.html`** instead of `index.html`, on localhost in **Chrome**. It loads the bench table and the serial sense layer; nothing to edit.
-3. Click **Connect the Arduino** and pick the board. Press **D** to see the raw line and your signals.
-4. Your State Table lives in **`bench/table-bench.js`** (same format as `table.js`). Your signal is a function in `SIGNALS` in `bench/sense-serial.js`: it gets the latest reading (`{ cm: 42.5 }`) and returns 0 to 1. Add the sensor to the sketch's printed line, then its function, then its name in `bench/table-bench.js`.
+## The sensors and the wiring
 
-## What stays in the browser
+An Arduino Nano, two sensors and an OLED on one breadboard.
 
-Nothing saves a frame or a landmark list. The model downloads once when you click Start; after that the Network panel stays quiet. Keep it that way: no `localStorage` of readings, no uploads, no screenshots of the camera image in the repo. Screenshots for your break log show the piece or the D readout.
+| Part | Pin | Nano pin | Whose |
+|---|---|---|---|
+| HC-SR04 / US-025A ultrasonic | VCC | 5V | Ford |
+| HC-SR04 / US-025A ultrasonic | GND | GND | Ford |
+| HC-SR04 / US-025A ultrasonic | TRIG | D9 | Ford |
+| HC-SR04 / US-025A ultrasonic | ECHO | D10 | Ford |
+| PIR motion (HC-SR501) | VCC | 5V | Ethan |
+| PIR motion (HC-SR501) | GND | GND | Ethan |
+| PIR motion (HC-SR501) | OUT | D2 | Ethan |
+| OLED (SSD1306, I2C) | VCC | 5V | both |
+| OLED (SSD1306, I2C) | GND | GND | both |
+| OLED (SSD1306, I2C) | SDA | A4 | both |
+| OLED (SSD1306, I2C) | SCL | A5 | both |
 
-The instrument is MediaPipe Face Landmarker, pinned to version 1.1.1, the same one the Make a Face lab used.
+The name's light is the Nano's own LED on D13, so it needs no wire. A buzzer on
+D8 is optional and off: `#define USE_BUZZER 1` in the sketch turns it on.
 
-## Credits
+Aim the ultrasonic off the edge of the desk or slightly up. Flat on the desk it
+hears the desk and reads a few centimetres with nobody there.
 
-- Fordham Wong: the wiring and reading of the HC-SR04 (`near`, `present`), and the response in `piece.js`
-- Ethan Takher: the PIR sensor (`still`)
+![Our drawing of the piece: the ultrasonic sensor facing a person, sound going out and coming back, wires running to the Nano's 5V, GND, A4, A5, D2, D9 and D10, the PIR below it, and the screen showing a distance.](design.jpg)
 
-Sensor: HC-SR04 ultrasonic distance sensor and HC-SR501 PIR motion sensor
+*The drawing we worked from.*
 
-Live: https://fwong29.github.io/team-repository/
+![The Nano on a breadboard with the ultrasonic sensor and the OLED, wired up on the desk with a USB cable going to a laptop.](img/wiring-overview.jpg)
+
+![The same breadboard close up: the Nano in the middle, the OLED at the lower left, the ultrasonic sensor at the right, jumpers running between them.](img/wiring-closeup.jpg)
+
+*Wiring the board, before the PIR went on and before the sketch was flashed —
+which is why the screen is dark in both. A photo of the finished piece on its
+own power, naming someone, goes here: `img/finished-piece.jpg`.*
+
+## How to run it
+
+1. Plug the Nano into a 5V USB wall charger or a power bank. Nothing else — no laptop, no Serial Monitor.
+2. Wait out the minute the screen counts down while the PIR warms up.
+3. Stand in front of it. The top line of the screen is what it calls you.
+
+To change it: flash `bench/bench.ino` from the Arduino IDE (Board: Arduino
+Nano; it needs the **U8g2** library). To watch the table's holds without a
+board, run `bench/test/run.sh`. The laptop view is `bench.html`, served on
+localhost in Chrome — an extra, never the piece.
+
+It still prints one line per reading over USB as a word and a number, so
+`bench.html` and anything else can read it in December:
+
+```
+cm 23.6 motion 1 held 2.3 name HOVERER
+```
+
+## Who it names wrongly
+
+- **A coat swallows the echo.** The ultrasonic needs a hard surface to bounce
+  off. Soft clothing, long hair or an open jacket can come back as no echo at
+  all, so someone standing right there gets called `nobody`.
+- **It names the nearest thing, not the nearest person.** A bag, a laptop lid
+  or a hand held out in front of you is what it measures. Whoever is actually
+  there gets the name their luggage earned.
+- **It is aimed at standing height.** The cone is about 30° wide. Someone
+  seated, someone short, or someone in a wheelchair can sit under it and never
+  be seen, which the piece reports as an empty room.
+- **The PIR reads heat and movement, not people.** A radiator, a laptop fan or
+  sunlight moving across the desk can hold `passerby` on with nobody there, and
+  it cannot see through glass at all.
+- **It cannot count.** Four people in front of it get one name, decided by
+  whoever stands closest.
+- **Holding still makes you furniture.** Stay still long enough and the PIR
+  drops you to `waiting`, which is the piece saying you stopped, not that you
+  left — but it looks the same as being ignored.
+
+It keeps none of this. Nothing is written down, nothing is counted, and
+unplugging it forgets everything.
 
 ## Break log
-
-- Fri Oct 23 (7eec54b): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
-- Fri Oct 23 (7eec54b): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
-- Mon Oct 26 (bdde448): the screen stayed black while the state read close / the old piece.js was not drawing / replaced it with a gradient version that follows near
-- Tue Oct 27 (40901ce): the OLED stayed blank even though the I2C scan found it at 0x3C / the Adafruit SSD1306 library would not draw on this module / switched to the U8g2 library with the SSD1306 driver
-
-## Build
-
-![The Nano on a breadboard with the HC-SR04 ultrasonic sensor and an OLED, connected to a laptop over USB](img/wiring-overview.jpg)
-
-![Close-up of the breadboard wiring: Nano, HC-SR04 and OLED](img/wiring-closeup.jpg)
-
-## Sensor and wiring
-
-Arduino Nano with two sensors and an OLED on one breadboard. The OLED shows the distance in cm. Photos are in the Build section above.
-
-| Part | Pin | Nano pin |
-|---|---|---|
-| HC-SR04 | VCC | 5V |
-| HC-SR04 | GND | GND |
-| HC-SR04 | TRIG | D9 |
-| HC-SR04 | ECHO | D10 |
-| PIR (HC-SR501) | VCC | 5V |
-| PIR (HC-SR501) | GND | GND |
-| PIR (HC-SR501) | OUT | D2 |
-| OLED (SSD1306) | VCC | 5V |
-| OLED (SSD1306) | GND | GND |
-| OLED (SSD1306) | SCL | A5 |
-| OLED (SSD1306) | SDA | A4 |
-
-Sketch: `bench/bench.ino` (the OLED uses the U8g2 library). The browser side is `bench.html`, with the rows in `bench/table-bench.js`.
-
-## The rule
-
-Three readings from the HC-SR04:
 
 - Nothing happening: 400 cm (no echo comes back)
 - A little (someone about 1 m away): 100 cm 
@@ -117,3 +152,30 @@ Three readings from the HC-SR04:
 The screen fades from white to black as the distance grows. Under about 38 cm it is nearly white and says NEAR, and with no one in range it is black and says FAR. 
 
 ![alt text](img/design.jpg)  
+- Fri Oct 23 (`7eec54b`): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
+- Fri Oct 23 (`7eec54b`): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
+- Mon Oct 26 (`bdde448`): the screen stayed black while the state read close / the old `piece.js` was not drawing / replaced it with a gradient version that follows `near`
+- Tue Oct 27 (`40901ce`): the OLED stayed blank even though the I2C scan found it at 0x3C / the Adafruit SSD1306 library would not draw on this module / switched to the U8g2 library with the SSD1306 driver
+- Mon Nov 16 (`417c101`): the OLED only worked while the laptop was attached / the Nano was drawing its power over the laptop's USB / ran it from a 5V wall charger instead
+- Wed Nov 18 (`58926ed`): unplugging the laptop stopped the piece naming anyone / the State Table lived in the browser and the sketch only printed numbers / moved all four names, their holds and their lines into `bench.ino`, so the Nano names you on its own
+- Wed Nov 18 (`3eb900b`): a reading jittering between 39 and 41 cm renamed the piece on every pass / the lines had smoothing but no gap, so both sides of 40 cm were live at once / gave every line a gap and took the median of the last three echoes; the test harness now counts zero name changes across forty jitters
+- Wed Nov 18 (`3eb900b`): the sketch built in the Arduino IDE but not in the test harness / the IDE writes function prototypes for you and plain C++ does not / declared the functions after the enum they take
+
+## Credits
+
+- **Ford Wong** owns **`hoverer`**: the HC-SR04 ultrasonic, the cm reading and
+  its median, the 40 cm line and its 8 cm gap, the naming loop and the screen.
+- **Ethan Takher** owns **`passerby`**: the HC-SR501 PIR, the motion reading,
+  the 0.60 line it crosses, and the warm-up minute it needs before it is worth
+  believing.
+- **`waiting` and `nobody` are ours together.** `waiting` is the row that needs
+  both sensors at once — in range from Ford's ultrasonic, gone quiet on Ethan's
+  PIR — and `nobody` is the row that catches everything the other three miss.
+
+Sensors: HC-SR04 / US-025A ultrasonic distance sensor, HC-SR501 PIR motion
+sensor. Screen: SSD1306 OLED, 128 × 64, over I2C, with the U8g2 library.
+Built on the Sensor Layer starter, which gave us `piece.js`, `fake-sense.js`
+and the shape of the State Table.
+
+Laptop view: https://fwong29.github.io/team-repository/ — this repo stays
+public through December.
