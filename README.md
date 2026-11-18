@@ -111,9 +111,9 @@ Sketch: `bench/bench.ino` (the OLED uses the U8g2 library). The browser side is 
 Three readings from the HC-SR04:
 
 - Nothing happening: 400 cm (no echo comes back)
-- A little (someone about 1 m away): 100 cm
-- A lot (a hand close to the sensor): 15 cm
+- A little (someone about 1 m away): 100 cm 
+- A lot (a hand close to the sensor): 15 cm 
 
-The screen fades from black to white as the distance shrinks. Under about 38 cm it is nearly white and says NEAR, and with no one in range it is black and says FAR.
+The screen fades from black to white as the distance shrinks. Under about 38 cm it is nearly white and says NEAR, and with no one in range it is black and says FAR. 
 
-![alt text](img/design.jpg) 
+![alt text](img/design.jpg)  
