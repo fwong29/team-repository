@@ -16,15 +16,21 @@ let motionTest = null;
 
 // ---- Signals --------------------------------------------------------------
 
+// The numbers here match bench.ino's lines, so the laptop names you the same
+// way the board does: 0.75 on `near` is the sketch's 40 cm line, `present`
+// turns over at its 150 cm line, and `moving` crosses 0.60 after the same
+// smoothing the sketch uses on the PIR.
 const SIGNALS = {
-  // Near: 1 at the sensor, 0 at two metres or more.
-  near: r => (r.cm === undefined ? 0 : clamp((200 - r.cm) / 190)),
+  // Near: 1 at the sensor, 0 at 160 cm. 0.75 is 40 cm.
+  near: r => (r.cm === undefined ? 0 : clamp((160 - r.cm) / 160)),
 
   // Present: someone within 1.5 metres.
   present: r => (r.cm !== undefined && r.cm < 150 ? 1 : 0),
 
-  // PIR motion sensor.
-  // 1 = no motion, 0 = motion detected.
+  // Ethan's PIR. It reads 1 while it sees movement and holds that for a few
+  // seconds afterwards, so `moving` is a ramp once the smoothing below is
+  // applied, and `still` is the other side of the same reading.
+  moving: r => (r.motion === undefined ? 0 : (r.motion > 0.5 ? 1 : 0)),
   still: r => (r.motion === undefined ? 0 : (r.motion > 0.5 ? 0 : 1)),
 };
 
