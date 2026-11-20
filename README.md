@@ -185,6 +185,13 @@ unplugging it forgets everything.
 
 ## Break log
 
+- Nothing happening: 400 cm (no echo comes back)
+- A little (someone about 1 m away): 100 cm 
+- A lot (a hand close to the sensor): 15 cm 
+
+The screen fades from white to black as the distance grows. Under about 38 cm it is nearly white and says NEAR, and with no one in range it is black and says FAR. 
+
+![alt text](img/design.jpg)  
 - Fri Oct 23 (`7eec54b`): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
 - Fri Oct 23 (`7eec54b`): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
 - Mon Oct 26 (`bdde448`): the screen stayed black while the state read close / the old `piece.js` was not drawing / replaced it with a gradient version that follows `near`
