@@ -44,36 +44,6 @@
 
   let level = 0;
 
-  // The screen redraws sixty times a second and the sensor never gives the
-  // same number twice, so the readout gets the same treatment the Nano gives
-  // it: a step it has to clear, a quarter second of staying clear, and no
-  // more than three changes a second. See updateShownCm in bench/bench.ino.
-  const CM_STEP = 2;
-  const CM_SUSTAIN_MS = 250;
-  const SHOW_EVERY_MS = 300;
-  let shownCm = null;
-  let shownCmAt = 0;
-  let cmOffAt = null;
-
-  function steadyCm(cm, now) {
-    if (shownCm === null) {
-      shownCm = Math.round(cm);
-      shownCmAt = now;
-      return shownCm;
-    }
-    if (Math.abs(cm - shownCm) < CM_STEP) {
-      cmOffAt = null;
-      return shownCm;
-    }
-    if (cmOffAt === null) cmOffAt = now;
-    if (now - cmOffAt >= CM_SUSTAIN_MS && now - shownCmAt >= SHOW_EVERY_MS) {
-      shownCm = Math.round(cm);
-      shownCmAt = now;
-      cmOffAt = null;
-    }
-    return shownCm;
-  }
-
   function ramp(x, a, b) {
     const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
     return t * t * (3 - 2 * t);
@@ -148,7 +118,7 @@
     const held = typeof s.since === 'number' ? (performance.now() - s.since) / 1000 : 0;
     ctx.font = `${Math.min(w, h) * 0.035}px ui-monospace, Menlo, monospace`;
     ctx.globalAlpha = 0.75;
-    const cm = near === null ? '' : `cm ${steadyCm(160 - near * 160, now)}   `;
+    const cm = near === null ? '' : `cm ${Math.round(160 - near * 160)}   `;
     ctx.fillText(`${cm}held ${held.toFixed(1)} s`, w / 2, h / 2 + Math.min(w, h) * 0.13);
     ctx.globalAlpha = 1;
 
