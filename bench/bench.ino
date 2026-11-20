@@ -348,13 +348,14 @@ void drawScreen(unsigned long now) {
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.setCursor(0, 14);
     u8g2.print("WARMING UP");
+    // 21 characters is the most the 6x10 font fits across 128 px.
     u8g2.setFont(u8g2_font_6x10_tr);
     u8g2.setCursor(0, 34);
-    u8g2.print("the motion sensor needs");
+    u8g2.print("the motion sensor");
     u8g2.setCursor(0, 46);
-    u8g2.print("a minute. ");
+    u8g2.print("needs a minute. ");
     u8g2.print(left);
-    u8g2.print("s to go.");
+    u8g2.print("s");
     u8g2.drawFrame(0, 52, 128, 12);
     int w = (int)(126.0 * (now / PIR_WARMUP_MS));
     u8g2.drawBox(1, 53, w > 126 ? 126 : w, 10);
@@ -385,9 +386,10 @@ void drawScreen(unsigned long now) {
   } else {
     u8g2.print(shownCm);
   }
+  // No setCursor: the cursor is already sitting after the last digit, so the
+  // unit follows the number instead of floating at a fixed spot away from it.
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  u8g2.setCursor(74, 42);
-  u8g2.print(current == NOBODY ? "" : "cm");
+  u8g2.print(current == NOBODY ? "" : " cm");
 
   // How fast you are coming, in words first and a round number after. With
   // nobody in range there is no speed to report, so the line stays empty.
@@ -407,7 +409,7 @@ void drawScreen(unsigned long now) {
   float pending = pendingProgress(now);
   if (pending > 0.0) {
     u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.setCursor(0, 63);
+    u8g2.setCursor(0, 61);
     u8g2.print(NAME_WORD[candidate]);
     u8g2.print("?");
     u8g2.drawFrame(66, 54, 62, 10);
@@ -434,20 +436,22 @@ void drawStrip(unsigned long now) {
       break;
 
     case WAITING:                              // still ticks, and the seconds
-      for (x = 60; x < 126; x += 6) u8g2.drawPixel(x, 59);
+      for (x = 66; x < 126; x += 6) u8g2.drawPixel(x, 58);
       u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.setCursor(0, 63);
+      u8g2.setCursor(0, 61);
       u8g2.print((int)((now - sinceMs) / 1000));
       u8g2.print("s still");
       break;
 
     case NOBODY:                               // one dot, drifting: awake
     default:
-      x = (int)((now % 6000) * 122 / 6000);
-      u8g2.drawPixel(x, 59);
-      u8g2.drawPixel(x + 1, 59);
+      // The dot crosses the left of the strip only: the word sits at x 84 and
+      // a dot drifting through it would read as a fault, not as breathing.
+      x = (int)((now % 6000) * 72 / 6000);
+      u8g2.drawPixel(x, 58);
+      u8g2.drawPixel(x + 1, 58);
       u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.setCursor(84, 63);
+      u8g2.setCursor(84, 61);
       u8g2.print("waiting");
       break;
   }
