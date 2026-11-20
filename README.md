@@ -55,13 +55,36 @@ being told:
 
 | Name | The screen | The light |
 |---|---|---|
-| `hoverer` | the word knocked out of a solid white bar, the distance in big digits | on, and it stays on |
+| `hoverer` | the word knocked out of a solid white bar, the distance in big digits, the speed under it | on, and it stays on |
 | `passerby` | a dot running left to right along the bottom: the trace movement leaves | fast flicker |
 | `waiting` | a row of still ticks, and the seconds you have been still | two short blinks, then a rest |
 | `nobody` | `---` where the number was, one dot drifting slowly, the word `waiting` | one short blink every three seconds |
 
 While a new name is waiting out its hold the screen says so — `PASSERBY?` and a
 bar filling — so the pause reads as the piece deciding, not as lag.
+
+**The numbers hold still long enough to read.** Under the name the screen gives
+the distance in big digits and, under that, how fast you are coming: `closer 15
+cm/s`, `steady`, or `away 20 cm/s`. The sensor talks twenty times a second and
+no two readings agree, so left alone the digits strobe and the speed is
+unreadable. Three things stop that, and they are the same three ideas as the
+rest of the piece:
+
+| | What it does |
+|---|---|
+| a baseline | speed is measured against where you were half a second ago, not against the last reading, which is mostly noise |
+| a step | distance shows to the nearest 2 cm and speed to the nearest 5 cm/s, so small wobble changes nothing |
+| a hold | a reading has to sit outside that step for a quarter of a second together before the digits move, and nothing on the screen changes more than three times a second |
+
+The speed word has a gap in it as well: it takes 10 cm/s to start reading as
+movement and keeps reading as movement until you drop under 6, so walking at
+the edge of the two does not strobe. With nobody in range there is no speed to
+report and the line stays empty.
+
+A hand held still with 3 cm of sensor wobble moves the raw number about 176
+times in ten seconds. It moves the number on the screen zero times, and the
+speed still reads `closer 40 cm/s` when someone really walks in. Both are
+checked in `bench/test/run.sh`.
 
 The same four names and the same numbers are in `bench/table-bench.js` for the
 laptop view. Change a number in one and you have to change it in the other.
@@ -114,10 +137,11 @@ board, run `bench/test/run.sh`. The laptop view is `bench.html`, served on
 localhost in Chrome — an extra, never the piece.
 
 It still prints one line per reading over USB as a word and a number, so
-`bench.html` and anything else can read it in December:
+`bench.html` and anything else can read it in December. The line carries the
+raw reading, not the steadied one, so nothing downstream loses detail:
 
 ```
-cm 23.6 motion 1 held 2.3 name HOVERER
+cm 23.6 motion 1 speed 12.4 held 2.3 name HOVERER
 ```
 
 ## Who it names wrongly
@@ -152,6 +176,7 @@ unplugging it forgets everything.
 - Mon Nov 16 (`417c101`): the OLED only worked while the laptop was attached / the Nano was drawing its power over the laptop's USB / ran it from a 5V wall charger instead
 - Wed Nov 18 (`58926ed`): unplugging the laptop stopped the piece naming anyone / the State Table lived in the browser and the sketch only printed numbers / moved all four names, their holds and their lines into `bench.ino`, so the Nano names you on its own
 - Wed Nov 18 (`3eb900b`): a reading jittering between 39 and 41 cm renamed the piece on every pass / the lines had smoothing but no gap, so both sides of 40 cm were live at once / gave every line a gap and took the median of the last three echoes; the test harness now counts zero name changes across forty jitters
+- Fri Nov 20 (`5033926`): the speed of approach was gone, and the distance digits flickered too fast to read / moving the naming onto the Nano had dropped the cm/s readout, and the digits were redrawn from the raw reading twenty times a second / measured speed against where you were half a second ago instead of against the last reading, put both numbers on a step and a quarter-second hold, and gave the speed word a gap like the names have. Holding a hand still moves the shown number 0 times in ten seconds, where the raw one moves 176.
 - Wed Nov 18 (`3eb900b`): the sketch built in the Arduino IDE but not in the test harness / the IDE writes function prototypes for you and plain C++ does not / declared the functions after the enum they take
 
 ## Credits

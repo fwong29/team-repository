@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include <cstdlib>
 unsigned long g_now = 0;
 float g_cm = 400.0f;
 int   g_motion = 0;
@@ -94,7 +95,64 @@ int main() {
   for (int i = 0; i < 60; i++) { loop(); g_now += 50; on += g_led; }
   printf("     waiting:  LED on for %d of 60 samples\n", on);
 
-  printf("\n-- 9. the USB line, for bench.html --\n");
+  printf("\n-- 9. a reading that holds still long enough to read --\n");
+  // A hand held at 50 cm, with the wobble a real HC-SR04 gives you.
+  srand(7);
+  g_cm = 50; g_motion = 0; step(4000);
+  int rawChanges = 0, shownChanges = 0, bandChanges = 0;
+  int lastRaw = -1, lastShown = shownCm; Drift lastBand = shownDrift;
+  for (int i = 0; i < 200; i++) {                 // 10 seconds of holding still
+    g_cm = 50.0f + (rand() % 70 - 35) / 10.0f;    // +/- 3.5 cm of noise
+    loop(); g_now += 50;
+    if ((int)(g_cm + 0.5f) != lastRaw) { rawChanges++; lastRaw = (int)(g_cm + 0.5f); }
+    if (shownCm != lastShown) { shownChanges++; lastShown = shownCm; }
+    if (shownDrift != lastBand) { bandChanges++; lastBand = shownDrift; }
+  }
+  printf("     the raw number changed %d times in 10 s of holding still\n", rawChanges);
+  printf("%s  %-52s %d times\n", shownChanges <= 6 ? "PASS" : "FAIL",
+         "the number on the screen changed", shownChanges);
+  printf("%s  %-52s %d times\n", bandChanges == 0 ? "PASS" : "FAIL",
+         "the speed word changed", bandChanges);
+  printf("%s  %-52s %s\n", shownDrift == STEADY ? "PASS" : "FAIL",
+         "a hand held still reads steady", shownDrift == STEADY ? "steady" : "moving");
+
+  printf("\n-- 10. and it still reports a real approach --\n");
+  for (int i = 0; i < 40; i++) {                  // walking in: 120 cm to 40 cm
+    g_cm = 120.0f - i * 2.0f;
+    loop(); g_now += 50;
+  }
+  printf("%s  %-52s %s %d cm/s\n", shownDrift == CLOSER ? "PASS" : "FAIL",
+         "walking in at 40 cm/s reads as closer",
+         shownDrift == CLOSER ? "closer" : (shownDrift == AWAY ? "away" : "steady"),
+         shownSpeed);
+  printf("     shown in steps of 5, so it lands on a round number\n");
+  for (int i = 0; i < 40; i++) {                  // and backing away again
+    g_cm = 40.0f + i * 2.0f;
+    loop(); g_now += 50;
+  }
+  printf("%s  %-52s %s %d cm/s\n", shownDrift == AWAY ? "PASS" : "FAIL",
+         "backing away reads as away", 
+         shownDrift == AWAY ? "away" : (shownDrift == CLOSER ? "closer" : "steady"),
+         shownSpeed);
+
+  printf("\n-- 11. the number still follows someone who really moves --\n");
+  g_cm = 100; step(3000);
+  int updates = 0, lastN = shownCm;
+  for (int i = 0; i < 160; i++) {          // a slow walk in: 100 to 60 cm over 8 s
+    g_cm = 100.0f - i * 0.25f;
+    loop(); g_now += 50;
+    if (shownCm != lastN) { updates++; lastN = shownCm; }
+  }
+  printf("%s  %-52s shows %d cm, moved %d times\n",
+         (shownCm >= 56 && shownCm <= 64 && updates >= 5) ? "PASS" : "FAIL",
+         "a slow 5 cm/s walk from 100 cm to 60 cm", shownCm, updates);
+
+  g_cm = 400; step(4000); g_cm = 30; step(1500);
+  printf("%s  %-52s shows %d cm within 1.5 s\n",
+         (shownCm >= 26 && shownCm <= 34) ? "PASS" : "FAIL",
+         "a hand put straight in front of it at 30 cm", shownCm);
+
+  printf("\n-- 12. the USB line, for bench.html --\n");
   g_cm = 23.6f; step(3000);
   loop();
   printf("     %s\n", Serial.line[0] ? Serial.line : "(println cleared it; rebuilding)");

@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
+using std::fabs;
 #define HIGH 1
 #define LOW 0
 #define OUTPUT 1
