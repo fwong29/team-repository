@@ -7,11 +7,11 @@ Ford Wong and Ethan Takher · Computer Coding Studio, fall 2026 · v1.0
 ```
 It notices:    how near you are, in cm, and whether you are moving
 It calls you:  hoverer, passerby, waiting, or nobody
-It does:       says the name on its screen, in a word, and blinks that
-               name's own pattern on its light
-For them:      a visitor finds out what it called them without asking anyone,
-               because the name is the biggest thing on the screen and the
-               number it named them on is right underneath
+It does:       shows how far away you are and how fast you are coming, in
+               centimetres and centimetres a second, and blinks the name it
+               has given you on its light
+For them:      a visitor reads the two numbers it is judging them on straight
+               off the screen, and watches them move as they move
 To them:       it answers the nearest body in front of it and ignores the
                rest of the room
 It refuses:    to count your visits, to save a reading, or to keep anything
@@ -50,22 +50,34 @@ its output high for seconds after movement stops, and the hold keeps the name
 from flicking on in the gap between two steps. `nobody` gets 2.0 s, the
 longest, because a single bad reading should never read as everybody leaving.
 
-**Each name answers differently**, so a stranger can tell them apart without
-being told:
+**The screen shows two readings and nothing else**: how far away you are, and
+how fast you are coming. Both as big as the panel allows, because they are
+meant to be read from where a visitor is standing rather than leaned over.
 
-| Name | The screen | The light |
-|---|---|---|
-| `hoverer` | the word knocked out of a solid white bar, the distance in big digits, the speed under it | on, and it stays on |
-| `passerby` | a dot running left to right along the bottom: the trace movement leaves | fast flicker |
-| `waiting` | a row of still ticks, and the seconds you have been still | two short blinks, then a rest |
-| `nobody` | `---` where the number was, one dot drifting slowly, the word `waiting` | one short blink every three seconds |
+```
+102 cm
+ 40 cm/s closer
+```
 
-While a new name is waiting out its hold the screen says so — `PASSERBY?` and a
-bar filling — so the pause reads as the piece deciding, not as lag.
+With nothing in range it reads `---` and `nobody in range`.
 
-**The numbers hold still long enough to read.** Under the name the screen gives
-the distance in big digits and, under that, how fast you are coming: `closer 15
-cm/s`, `steady`, or `away 20 cm/s`. The sensor talks twenty times a second and
+**The name is on the light.** It is still worked out every frame, with its own
+rules and its own hold; it is the pattern the Nano's LED blinks, which is
+readable across a room with the screen facing away:
+
+| Name | The light |
+|---|---|
+| `hoverer` | on, and it stays on |
+| `passerby` | fast flicker |
+| `waiting` | two short blinks, then a rest |
+| `nobody` | one short blink every three seconds |
+
+This is the trade the piece makes: the screen stopped being the thing that
+names you and became the instrument you read. A visitor can see exactly what
+it measures about them; to know what it decided to *call* them, they have to
+read the light.
+
+**The numbers hold still long enough to read.** The sensor talks twenty times a second and
 no two readings agree, so left alone the digits strobe and the speed is
 unreadable. Three things stop that, and they are the same three ideas as the
 rest of the piece:
@@ -180,6 +192,7 @@ unplugging it forgets everything.
 - Mon Nov 16 (`417c101`): the OLED only worked while the laptop was attached / the Nano was drawing its power over the laptop's USB / ran it from a 5V wall charger instead
 - Wed Nov 18 (`58926ed`): unplugging the laptop stopped the piece naming anyone / the State Table lived in the browser and the sketch only printed numbers / moved all four names, their holds and their lines into `bench.ino`, so the Nano names you on its own
 - Wed Nov 18 (`3eb900b`): a reading jittering between 39 and 41 cm renamed the piece on every pass / the lines had smoothing but no gap, so both sides of 40 cm were live at once / gave every line a gap and took the median of the last three echoes; the test harness now counts zero name changes across forty jitters
+- Fri Nov 20 (`bc2164a`): the screen was busy enough that the two readings a visitor actually wants were the smallest things on it / it was carrying the name, the number, the speed, a per-name strip and a hold bar in 128 x 64 / cut it to the two readings, how far and how fast, both as big as the panel allows, and moved the name onto the light
 - Fri Nov 20 (`2ab9cb3`): the warm-up screen's second line ran ten pixels off the right edge, and it shipped in v1.0 / "the motion sensor needs" is 23 characters and the 6x10 font fits 21 across 128 px / split the line, and wrote `bench/test/screen-check` so the panel's edges are measured instead of guessed. It is the first screen anybody sees and nobody had seen it.
 - Fri Nov 20 (`2ab9cb3`): the g in "waiting" was cut off the bottom of the nobody screen / the bottom row sat on baseline 63 and a descender needs two rows under it / moved the bottom row to 61, and kept the drifting dot clear of the word so it does not look like a fault
 - Fri Nov 20 (`5033926`): the speed of approach was gone, and the distance digits flickered too fast to read / moving the naming onto the Nano had dropped the cm/s readout, and the digits were redrawn from the raw reading twenty times a second / measured speed against where you were half a second ago instead of against the last reading, put both numbers on a step and a quarter-second hold, and gave the speed word a gap like the names have. Holding a hand still moves the shown number 0 times in ten seconds, where the raw one moves 176.
