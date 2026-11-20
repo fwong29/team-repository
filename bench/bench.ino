@@ -92,11 +92,9 @@ const float NAME_HOLD[NAME_COUNT] = {  0.6,       1.0,        1.5,       2.0    
 void chirp(Name n);
 void updateSpeed(unsigned long now);
 void updateShownCm(unsigned long now);
-void drawStrip(unsigned long now);
 void drawScreen(unsigned long now);
 void updateLed(unsigned long now);
 void updateName(unsigned long now);
-float pendingProgress(unsigned long now);
 
 // Which row is true right now, checked top to bottom. Nothing below reads the
 // sensors directly: this is the only place the rules live.
@@ -201,6 +199,7 @@ void updateSpeed(unsigned long now) {
   }
 
   int want = drift == STEADY ? 0 : (int)(mag / SPEED_STEP + 0.5) * (int)SPEED_STEP;
+  if (want > 195) want = 195;              // three digits is all the row fits
   if (now - shownSpeedAt >= SHOW_EVERY_MS &&
       (want != shownSpeed || drift != shownDrift)) {
     shownSpeed = want;
@@ -280,16 +279,6 @@ void updateName(unsigned long now) {
   }
 }
 
-// How far through its hold the row that wants to take over has come, 0 to 1.
-// Drawn as a bar, so the wait is something a visitor can see instead of lag.
-float pendingProgress(unsigned long now) {
-  if (candidate == current) return 0.0;
-  float hold = NAME_HOLD[candidate] * 1000.0;
-  if (hold <= 0) return 1.0;
-  float t = (now - candidateMs) / hold;
-  return t < 0 ? 0 : (t > 1 ? 1 : t);
-}
-
 // ---- Acting: the light ----------------------------------------------------
 //
 // One pattern per name, so the name is readable from across the room with the
@@ -363,98 +352,43 @@ void drawScreen(unsigned long now) {
     return;
   }
 
-  // The name, top of the screen. The hoverer's is inverted, because that is
-  // the one row a visitor is standing right in front of.
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  if (current == HOVERER) {
-    u8g2.drawBox(0, 0, 128, 16);
-    u8g2.setDrawColor(0);
-    u8g2.setCursor(3, 13);
-    u8g2.print(NAME_WORD[current]);
-    u8g2.setDrawColor(1);
-  } else {
-    u8g2.setCursor(0, 13);
-    u8g2.print(NAME_WORD[current]);
-  }
+  // Two readings, and nothing else: how far away you are, and how fast you
+  // are coming. Both as big as the panel allows, because they are meant to be
+  // read from where the visitor is standing, not leaned over.
+  //
+  // The name is still worked out underneath, every frame, with its rules and
+  // its holds. It is on the light now instead of on the screen.
 
-  // The number it named you on, to the nearest 2 cm and never changing more
-  // than three times a second. Kept in cm, on the screen and over USB.
+  bool inRange = gRange.on;
+
+  // HOW FAR
   u8g2.setFont(u8g2_font_logisoso24_tn);
-  u8g2.setCursor(0, 42);
-  if (current == NOBODY) {
-    u8g2.print("---");
-  } else {
+  u8g2.setCursor(0, 26);
+  if (inRange) {
     u8g2.print(shownCm);
-  }
-  // No setCursor: the cursor is already sitting after the last digit, so the
-  // unit follows the number instead of floating at a fixed spot away from it.
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  u8g2.print(current == NOBODY ? "" : " cm");
-
-  // How fast you are coming, in words first and a round number after. With
-  // nobody in range there is no speed to report, so the line stays empty.
-  u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.setCursor(0, 52);
-  if (current != NOBODY) {
-    if (shownDrift == STEADY) {
-      u8g2.print("steady");
-    } else {
-      u8g2.print(shownDrift == CLOSER ? "closer " : "away ");
-      u8g2.print(shownSpeed);
-      u8g2.print(" cm/s");
-    }
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    u8g2.print(" cm");
+  } else {
+    u8g2.print("---");
   }
 
-  // A name that is waiting out its hold says so, in place of its own strip.
-  float pending = pendingProgress(now);
-  if (pending > 0.0) {
+  // HOW FAST. The number is what it is doing, the word is which way.
+  u8g2.setFont(u8g2_font_logisoso24_tn);
+  u8g2.setCursor(0, 58);
+  if (inRange) {
+    u8g2.print(shownSpeed);
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    u8g2.print(" cm/s");
     u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.setCursor(0, 61);
-    u8g2.print(NAME_WORD[candidate]);
-    u8g2.print("?");
-    u8g2.drawFrame(66, 54, 62, 10);
-    u8g2.drawBox(67, 55, (int)(60.0 * pending), 8);
-    u8g2.sendBuffer();
-    return;
+    u8g2.print(shownDrift == CLOSER ? " closer" :
+               shownDrift == AWAY   ? " away"   : " steady");
+  } else {
+    u8g2.print("---");
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.print(" nobody in range");
   }
 
-  drawStrip(now);
   u8g2.sendBuffer();
-}
-
-void drawStrip(unsigned long now) {
-  int x;
-  switch (current) {
-    case HOVERER:                              // loudest: a filled bar
-      u8g2.drawBox(0, 54, 128, 10);
-      break;
-
-    case PASSERBY:                             // a trace movement leaves behind
-      u8g2.drawFrame(0, 54, 128, 10);
-      x = (int)((now % 1200) * 122 / 1200);
-      u8g2.drawBox(x > 120 ? 120 : x, 56, 6, 6);
-      break;
-
-    case WAITING:                              // still ticks, and the seconds
-      for (x = 66; x < 126; x += 6) u8g2.drawPixel(x, 58);
-      u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.setCursor(0, 61);
-      u8g2.print((int)((now - sinceMs) / 1000));
-      u8g2.print("s still");
-      break;
-
-    case NOBODY:                               // one dot, drifting: awake
-    default:
-      // The dot crosses the left of the strip only: the word sits at x 84 and
-      // a dot drifting through it would read as a fault, not as breathing.
-      x = (int)((now % 6000) * 72 / 6000);
-      u8g2.drawPixel(x, 58);
-      u8g2.drawPixel(x + 1, 58);
-      u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.setCursor(84, 61);
-      u8g2.print("waiting");
-      break;
-  }
 }
 
 // ---- The loop -------------------------------------------------------------
