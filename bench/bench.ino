@@ -41,7 +41,11 @@ const int LED  = 13;           // the Nano's own LED: one pattern per name
 #define USE_BUZZER 0
 const int BUZZER = 8;
 
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+// _2_ not _F_: the full-frame constructor keeps all 1024 bytes of a 128 x 64
+// screen in RAM, which is half of everything the ATmega328P has. The 2-page
+// version keeps 256 and redraws in four passes, which is why the drawing
+// lives in paint() and is called from a firstPage/nextPage loop below.
+U8G2_SSD1306_128X64_NONAME_2_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
 // ---- The lines, and the gap that keeps them steady ------------------------
 //
@@ -92,6 +96,7 @@ const float NAME_HOLD[NAME_COUNT] = {  0.6,       1.0,        1.5,       2.0    
 void chirp(Name n);
 void updateSpeed(unsigned long now);
 void updateShownCm(unsigned long now);
+void paint(unsigned long now);
 void drawScreen(unsigned long now);
 void updateLed(unsigned long now);
 void updateName(unsigned long now);
@@ -329,26 +334,26 @@ void chirp(Name n) {
 //   waiting   a steady row of ticks and the seconds it has been waiting
 //   nobody    one dot drifting slowly across an empty strip: waiting, not broken
 
-void drawScreen(unsigned long now) {
-  u8g2.clearBuffer();
-
+// paint() is called once per page, four times a frame, so it only ever reads
+// state and never changes any. Everything it needs is worked out before the
+// page loop starts.
+void paint(unsigned long now) {
   if (warming) {
     int left = (int)((PIR_WARMUP_MS - now) / 1000.0) + 1;
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.setCursor(0, 14);
-    u8g2.print("WARMING UP");
+    u8g2.print(F("WARMING UP"));
     // 21 characters is the most the 6x10 font fits across 128 px.
     u8g2.setFont(u8g2_font_6x10_tr);
     u8g2.setCursor(0, 34);
-    u8g2.print("the motion sensor");
+    u8g2.print(F("the motion sensor"));
     u8g2.setCursor(0, 46);
-    u8g2.print("needs a minute. ");
+    u8g2.print(F("needs a minute. "));
     u8g2.print(left);
-    u8g2.print("s");
+    u8g2.print(F("s"));
     u8g2.drawFrame(0, 52, 128, 12);
     int w = (int)(126.0 * (now / PIR_WARMUP_MS));
     u8g2.drawBox(1, 53, w > 126 ? 126 : w, 10);
-    u8g2.sendBuffer();
     return;
   }
 
@@ -367,9 +372,9 @@ void drawScreen(unsigned long now) {
   if (inRange) {
     u8g2.print(shownCm);
     u8g2.setFont(u8g2_font_ncenB10_tr);
-    u8g2.print(" cm");
+    u8g2.print(F(" cm"));
   } else {
-    u8g2.print("---");
+    u8g2.print(F("---"));
   }
 
   // HOW FAST. The number is what it is doing, the word is which way.
@@ -378,17 +383,23 @@ void drawScreen(unsigned long now) {
   if (inRange) {
     u8g2.print(shownSpeed);
     u8g2.setFont(u8g2_font_ncenB10_tr);
-    u8g2.print(" cm/s");
+    u8g2.print(F(" cm/s"));
     u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.print(shownDrift == CLOSER ? " closer" :
-               shownDrift == AWAY   ? " away"   : " steady");
+    if (shownDrift == CLOSER)    u8g2.print(F(" closer"));
+    else if (shownDrift == AWAY) u8g2.print(F(" away"));
+    else                         u8g2.print(F(" steady"));
   } else {
-    u8g2.print("---");
+    u8g2.print(F("---"));
     u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.print(" nobody in range");
+    u8g2.print(F(" nobody in range"));
   }
+}
 
-  u8g2.sendBuffer();
+void drawScreen(unsigned long now) {
+  u8g2.firstPage();
+  do {
+    paint(now);
+  } while (u8g2.nextPage());
 }
 
 // ---- The loop -------------------------------------------------------------
@@ -424,15 +435,15 @@ void loop() {
   drawScreen(now);
 
   // One line per reading, as a word and a number, for bench.html and the bench.
-  Serial.print("cm ");
+  Serial.print(F("cm "));
   Serial.print(rawCm, 1);
-  Serial.print(" motion ");
+  Serial.print(F(" motion "));
   Serial.print(rawMotion);
-  Serial.print(" speed ");
+  Serial.print(F(" speed "));
   Serial.print(speedCms, 1);
-  Serial.print(" held ");
+  Serial.print(F(" held "));
   Serial.print((now - sinceMs) / 1000.0, 1);
-  Serial.print(" name ");
+  Serial.print(F(" name "));
   Serial.println(warming ? "warming" : NAME_WORD[current]);
 
   delay(50);                                   // about 20 readings a second

@@ -33,6 +33,11 @@ struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
   void begin() {}
   void clearBuffer() { ops.clear(); }
   void sendBuffer() { frame = ops; }
+
+  // The sketch draws in page mode now. The real library calls the drawing
+  // code once per page; here one pass is enough to record what it draws.
+  void firstPage() { ops.clear(); }
+  bool nextPage() { frame = ops; return false; }
   void setDrawColor(int c) { color = c; }
   void setCursor(int x, int y) { cx = x; cy = y; }
 
