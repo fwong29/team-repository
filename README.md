@@ -192,6 +192,7 @@ unplugging it forgets everything.
 
 ## Break log
 
+- Mon Nov 23 (`PENDINGHASH`): the sketch would not upload at all — `data section exceeds available space in board` / global variables came to 2083 bytes and the Nano has 2048: U8g2's full-frame constructor keeps the whole 128 x 64 screen, 1024 bytes, in RAM, and every string literal was sitting in RAM beside it / switched to the 2-page constructor, which keeps 256 bytes and redraws in four passes, and wrapped every literal in `F()` so it stays in flash
 - Fri Oct 23 (`7eec54b`): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
 - Fri Oct 23 (`7eec54b`): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
 - Mon Oct 26 (`bdde448`): the screen stayed black while the state read close / the old `piece.js` was not drawing / replaced it with a gradient version that follows `near`
