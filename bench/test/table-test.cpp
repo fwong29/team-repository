@@ -55,14 +55,14 @@ int main() {
   expect("WAITING", "in range, the PIR has gone quiet");
 
   printf("\n-- 4. a hand at the sensor --\n");
-  g_cm = 25; last = shown();
-  watch(3000, "hand at 25 cm");
-  expect("HOVERER", "closer than the 40 cm line");
+  g_cm = 15; last = shown();
+  watch(3000, "hand at 15 cm");
+  expect("HOVERER", "closer than the 20 cm line");
 
-  printf("\n-- 5. steadiness at the line: 39 and 41 cm, back and forth --\n");
+  printf("\n-- 5. steadiness at the line: 19 and 21 cm, back and forth --\n");
   int flips = 0; const char* before = shown();
   for (int i = 0; i < 40; i++) {
-    g_cm = (i % 2) ? 41 : 39;
+    g_cm = (i % 2) ? 21 : 19;
     loop(); g_now += 50;
     if (strcmp(shown(), before) != 0) { flips++; before = shown(); }
   }

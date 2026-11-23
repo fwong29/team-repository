@@ -29,18 +29,26 @@ five: a rule that goes false partway through starts over.
 
 | Name | Owner | Rule | Line | Gap | Hold |
 |---|---|---|---|---|---|
-| `hoverer` | Ford | closer than the near line | 40 cm | 8 cm | 0.6 s |
+| `hoverer` | Ford | closer than the near line | 20 cm | 8 cm | 0.6 s |
 | `passerby` | Ethan | in range, and the PIR sees motion | motion 0.60 | 0.25 | 1.0 s |
 | `waiting` | ours | in range, and the PIR sees no motion | motion 0.35 | 0.25 | 1.5 s |
 | `nobody` | ours | nothing in range | 150 cm | 20 cm | 2.0 s |
 
 **The gap is what keeps it steady.** A line on its own flickers: a hand sitting
-at exactly 40 cm renames the piece on every reading. Each line here has a gap
-on the far side of it, so `hoverer` starts at 40 cm but does not let go until
-48, and `nobody` starts past 150 cm but does not let go until you come back
+at exactly 20 cm renames the piece on every reading. Each line here has a gap
+on the far side of it, so `hoverer` starts at 20 cm but does not let go until
+28, and `nobody` starts past 150 cm but does not let go until you come back
 inside 170. Between 0.35 and 0.60 on the motion reading no row is true at all,
 and the piece keeps the name it already has. On top of that the distance is the
 median of the last three echoes, so one missed echo renames nobody.
+
+**What 20 cm means.** The line was 40 cm and is now half that, which changes
+what the name is about: at 40 cm a person standing close enough to read the
+screen was a `hoverer`, and at 20 cm it takes a hand put there deliberately.
+The name got narrower and more certain. Everyone standing at a normal reading
+distance is a `waiting` or a `passerby` now. The gap stays at 8 cm, because
+the sensor's wobble is about three centimetres whatever the distance — it is
+an amount of noise, not a proportion of the reading.
 
 **The holds, and why each is what it is.** `hoverer` gets 0.6 s, the shortest,
 because that is the row a visitor is standing in front of on purpose and it
@@ -164,7 +172,7 @@ It still prints one line per reading over USB as a word and a number, so
 raw reading, not the steadied one, so nothing downstream loses detail:
 
 ```
-cm 23.6 motion 1 speed 12.4 held 2.3 name HOVERER
+cm 14.2 motion 1 speed 12.4 held 2.3 name HOVERER
 ```
 
 ## Who it names wrongly
@@ -192,6 +200,7 @@ unplugging it forgets everything.
 
 ## Break log
 
+- Mon Nov 23 (`a55ffd7`): the harness reported 26 passes for a sketch that did not compile / `run.sh` piped g++ through `grep ... || true`, which hid the error and then ran the binary from the last build that worked / build into a fresh binary, stop on a failure, and say `nothing was run`. It surfaced when the sketch moved to the 2-page U8g2 constructor and the test stub still knew only the full-frame one — every "all passing" between those two changes was reporting on old code.
 - Mon Nov 23 (`9c1f4fb`): the sketch would not upload at all — `data section exceeds available space in board` / global variables came to 2083 bytes and the Nano has 2048: U8g2's full-frame constructor keeps the whole 128 x 64 screen, 1024 bytes, in RAM, and every string literal was sitting in RAM beside it / switched to the 2-page constructor, which keeps 256 bytes and redraws in four passes, and wrapped every literal in `F()` so it stays in flash
 - Fri Oct 23 (`7eec54b`): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
 - Fri Oct 23 (`7eec54b`): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
@@ -209,7 +218,7 @@ unplugging it forgets everything.
 ## Credits
 
 - **Ford Wong** owns **`hoverer`**: the HC-SR04 ultrasonic, the cm reading and
-  its median, the 40 cm line and its 8 cm gap, the naming loop and the screen.
+  its median, the 20 cm line and its 8 cm gap, the naming loop and the screen.
 - **Ethan Takher** owns **`passerby`**: the HC-SR501 PIR, the motion reading,
   the 0.60 line it crosses, and the warm-up minute it needs before it is worth
   believing.

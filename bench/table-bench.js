@@ -17,7 +17,8 @@
 //
 // The four names, who owns each, and why its hold is what it is:
 //
-//   hoverer   Ford.  A hand or a face right at the sensor, closer than 40 cm.
+//   hoverer   Ford.  A hand right at the sensor, closer than 20 cm. At that
+//             range it is a hand put there on purpose, not someone standing.
 //             0.6 s, the shortest hold: this is the row a visitor is standing
 //             in front of on purpose, and it should answer almost at once.
 //   passerby  Ethan. Someone in range that the PIR can see moving. 1.0 s, so
@@ -38,7 +39,7 @@ window.TABLE = {
   signals: ['near', 'present', 'moving', 'still'],
 
   states: [
-    { name: 'hoverer',  when: s => s.near > 0.75,                        hold: 0.6 },
+    { name: 'hoverer',  when: s => s.near > 0.875,                       hold: 0.6 },
     { name: 'passerby', when: s => s.present > 0.5 && s.moving > 0.6,    hold: 1.0 },
     { name: 'waiting',  when: s => s.present > 0.5 && s.moving < 0.35,   hold: 1.5 },
     { name: 'nobody',   when: s => s.present < 0.2,                      hold: 2.0 },

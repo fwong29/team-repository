@@ -51,7 +51,8 @@ pair works together rather than side by side.
 
 Keep this list as you tune. Each line: the number, what it was, what it is, why.
 
-- `near > 0.85` — starter value, kept. 0.85 is roughly 40 cm or closer.
+- `near > 0.875` — halved from the 40 cm line it started at. 0.875 is 20 cm,
+  close enough that it takes a hand put there deliberately.
 - `still > 0.6` — new. The PIR is only ever 0 or 1, and smoothing (0.25) walks
   it there over about half a second, so 0.6 means "has been quiet a moment".
 

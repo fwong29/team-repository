@@ -53,8 +53,8 @@ U8G2_SSD1306_128X64_NONAME_2_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 // has to come back before the piece lets go of it, so a hand sitting right on
 // a line cannot flicker the name. Raise a gap if a name twitches at its edge.
 
-const float HOVER_LINE = 40.0;   // closer than this is a hoverer
-const float HOVER_GAP  =  8.0;   // and it stays a hoverer out to 48 cm
+const float HOVER_LINE = 20.0;   // closer than this is a hoverer
+const float HOVER_GAP  =  8.0;   // and it stays a hoverer out to 28 cm
 
 const float RANGE_LINE = 150.0;  // closer than this is in range
 const float RANGE_GAP  =  20.0;  // and stays in range out to 170 cm
