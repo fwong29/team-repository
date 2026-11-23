@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
+using std::fabs;
+#define F(x) (x)            // on AVR this keeps the string in flash
 #define HIGH 1
 #define LOW 0
 #define OUTPUT 1

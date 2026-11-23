@@ -41,7 +41,11 @@ const int LED  = 13;           // the Nano's own LED: one pattern per name
 #define USE_BUZZER 0
 const int BUZZER = 8;
 
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+// _2_ not _F_: the full-frame constructor keeps all 1024 bytes of a 128 x 64
+// screen in RAM, which is half of everything the ATmega328P has. The 2-page
+// version keeps 256 and redraws in four passes, which is why the drawing
+// lives in paint() and is called from a firstPage/nextPage loop below.
+U8G2_SSD1306_128X64_NONAME_2_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 
 // ---- The lines, and the gap that keeps them steady ------------------------
 //
@@ -49,8 +53,8 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 // has to come back before the piece lets go of it, so a hand sitting right on
 // a line cannot flicker the name. Raise a gap if a name twitches at its edge.
 
-const float HOVER_LINE = 40.0;   // closer than this is a hoverer
-const float HOVER_GAP  =  8.0;   // and it stays a hoverer out to 48 cm
+const float HOVER_LINE = 20.0;   // closer than this is a hoverer
+const float HOVER_GAP  =  8.0;   // and it stays a hoverer out to 28 cm
 
 const float RANGE_LINE = 150.0;  // closer than this is in range
 const float RANGE_GAP  =  20.0;  // and stays in range out to 170 cm
@@ -90,11 +94,12 @@ const float NAME_HOLD[NAME_COUNT] = {  0.6,       1.0,        1.5,       2.0    
 // Declared here so the file compiles the same way in the Arduino IDE, in
 // arduino-cli, and in the plain-C++ harness the table is tested with.
 void chirp(Name n);
-void drawStrip(unsigned long now);
+void updateSpeed(unsigned long now);
+void updateShownCm(unsigned long now);
+void paint(unsigned long now);
 void drawScreen(unsigned long now);
 void updateLed(unsigned long now);
 void updateName(unsigned long now);
-float pendingProgress(unsigned long now);
 
 // Which row is true right now, checked top to bottom. Nothing below reads the
 // sensors directly: this is the only place the rules live.
@@ -129,6 +134,104 @@ int windowAt = 0;
 float medianOfThree() {
   float a = window[0], b = window[1], c = window[2];
   return max(min(a, b), min(max(a, b), c));
+}
+
+// ---- How fast you are coming, and numbers a person can actually read ------
+//
+// The sensor gives twenty numbers a second and no two of them are the same.
+// A digit that changes twenty times a second is not a reading, it is a
+// flicker, so nothing on the screen is allowed to move until the thing it
+// measures has really moved.
+//
+// Three things do that work:
+//   a baseline  speed is measured against where you were half a second ago,
+//               not against the last reading, which is mostly noise
+//   a step      the screen shows distance to the nearest 2 cm and speed to
+//               the nearest 5 cm/s, so small wobble changes nothing
+//   a rest      no number on the screen may change more than three times a
+//               second, however fast the sensor talks
+//
+// The speed word has a gap in it too, the same trick the names use: it takes
+// 10 cm/s to start reading as movement and it keeps reading as movement until
+// you drop under 6, so walking at the edge of the two does not strobe.
+
+const unsigned long SHOW_EVERY_MS = 300;   // no number changes faster than this
+const float CM_STEP       = 2.0;           // ... or for less than 2 cm
+const unsigned long CM_SUSTAIN_MS = 250;   // ... and not until it stays moved
+const int   SPEED_SAMPLES = 10;            // half a second of history
+const float SPEED_SMOOTHING = 0.20;
+const float SPEED_MOVING  = 10.0;          // cm/s that starts reading as movement
+const float SPEED_STEADY  = 6.0;           // ... and the speed it reads steady again
+const float SPEED_STEP    = 5.0;           // shown in steps of 5 cm/s
+
+float history[SPEED_SAMPLES];
+int   historyAt = 0;
+bool  historyFull = false;
+float speedCms = 0;                        // positive means coming closer
+
+enum Drift { STEADY = 0, CLOSER, AWAY };
+Drift drift = STEADY;
+
+int   shownCm = 0;                         // what the screen is showing now
+unsigned long shownCmAt = 0;
+bool  cmOff = false;                       // the reading has left the shown band
+unsigned long cmOffAt = 0;
+int   shownSpeed = 0;
+Drift shownDrift = STEADY;
+unsigned long shownSpeedAt = 0;
+
+void updateSpeed(unsigned long now) {
+  float then = history[historyAt];         // where you were SPEED_SAMPLES ago
+  history[historyAt] = cmSmooth;
+  historyAt = (historyAt + 1) % SPEED_SAMPLES;
+  if (historyAt == 0) historyFull = true;
+
+  float raw = 0;
+  // A jump to or from "nothing in range" is not a movement, it is the sensor
+  // losing you, so it does not count as speed.
+  if (historyFull && then < NO_ECHO_CM && cmSmooth < NO_ECHO_CM) {
+    raw = (then - cmSmooth) / (SPEED_SAMPLES * 0.05);
+  }
+  speedCms += (raw - speedCms) * SPEED_SMOOTHING;
+
+  float mag = fabs(speedCms);
+  if (drift == STEADY) {
+    if (mag > SPEED_MOVING) drift = speedCms > 0 ? CLOSER : AWAY;
+  } else if (mag < SPEED_STEADY) {
+    drift = STEADY;
+  } else {
+    drift = speedCms > 0 ? CLOSER : AWAY;
+  }
+
+  int want = drift == STEADY ? 0 : (int)(mag / SPEED_STEP + 0.5) * (int)SPEED_STEP;
+  if (want > 195) want = 195;              // three digits is all the row fits
+  if (now - shownSpeedAt >= SHOW_EVERY_MS &&
+      (want != shownSpeed || drift != shownDrift)) {
+    shownSpeed = want;
+    shownDrift = drift;
+    shownSpeedAt = now;
+  }
+}
+
+// The number gets a hold of its own, for the same reason the names do: noise
+// crosses a line and comes straight back, a person walking does not. The
+// reading has to sit more than CM_STEP away from what is on the screen for a
+// quarter of a second together before the digits are allowed to move.
+void updateShownCm(unsigned long now) {
+  if (fabs(cmSmooth - shownCm) < CM_STEP) {
+    cmOff = false;
+    return;
+  }
+  if (!cmOff) {
+    cmOff = true;
+    cmOffAt = now;
+    return;
+  }
+  if (now - cmOffAt < CM_SUSTAIN_MS) return;
+  if (now - shownCmAt < SHOW_EVERY_MS) return;
+  shownCm = (int)(cmSmooth + 0.5);
+  shownCmAt = now;
+  cmOff = false;
 }
 
 float readCm() {
@@ -181,16 +284,6 @@ void updateName(unsigned long now) {
   }
 }
 
-// How far through its hold the row that wants to take over has come, 0 to 1.
-// Drawn as a bar, so the wait is something a visitor can see instead of lag.
-float pendingProgress(unsigned long now) {
-  if (candidate == current) return 0.0;
-  float hold = NAME_HOLD[candidate] * 1000.0;
-  if (hold <= 0) return 1.0;
-  float t = (now - candidateMs) / hold;
-  return t < 0 ? 0 : (t > 1 ? 1 : t);
-}
-
 // ---- Acting: the light ----------------------------------------------------
 //
 // One pattern per name, so the name is readable from across the room with the
@@ -241,102 +334,72 @@ void chirp(Name n) {
 //   waiting   a steady row of ticks and the seconds it has been waiting
 //   nobody    one dot drifting slowly across an empty strip: waiting, not broken
 
-void drawScreen(unsigned long now) {
-  u8g2.clearBuffer();
-
+// paint() is called once per page, four times a frame, so it only ever reads
+// state and never changes any. Everything it needs is worked out before the
+// page loop starts.
+void paint(unsigned long now) {
   if (warming) {
     int left = (int)((PIR_WARMUP_MS - now) / 1000.0) + 1;
     u8g2.setFont(u8g2_font_ncenB10_tr);
     u8g2.setCursor(0, 14);
-    u8g2.print("WARMING UP");
+    u8g2.print(F("WARMING UP"));
+    // 21 characters is the most the 6x10 font fits across 128 px.
     u8g2.setFont(u8g2_font_6x10_tr);
     u8g2.setCursor(0, 34);
-    u8g2.print("the motion sensor needs");
+    u8g2.print(F("the motion sensor"));
     u8g2.setCursor(0, 46);
-    u8g2.print("a minute. ");
+    u8g2.print(F("needs a minute. "));
     u8g2.print(left);
-    u8g2.print("s to go.");
+    u8g2.print(F("s"));
     u8g2.drawFrame(0, 52, 128, 12);
     int w = (int)(126.0 * (now / PIR_WARMUP_MS));
     u8g2.drawBox(1, 53, w > 126 ? 126 : w, 10);
-    u8g2.sendBuffer();
     return;
   }
 
-  // The name, top of the screen. The hoverer's is inverted, because that is
-  // the one row a visitor is standing right in front of.
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  if (current == HOVERER) {
-    u8g2.drawBox(0, 0, 128, 16);
-    u8g2.setDrawColor(0);
-    u8g2.setCursor(3, 13);
-    u8g2.print(NAME_WORD[current]);
-    u8g2.setDrawColor(1);
-  } else {
-    u8g2.setCursor(0, 13);
-    u8g2.print(NAME_WORD[current]);
-  }
+  // Two readings, and nothing else: how far away you are, and how fast you
+  // are coming. Both as big as the panel allows, because they are meant to be
+  // read from where the visitor is standing, not leaned over.
+  //
+  // The name is still worked out underneath, every frame, with its rules and
+  // its holds. It is on the light now instead of on the screen.
 
-  // The number it named you on. Kept in cm, on the screen and over USB.
+  bool inRange = gRange.on;
+
+  // HOW FAR
   u8g2.setFont(u8g2_font_logisoso24_tn);
-  u8g2.setCursor(0, 46);
-  if (current == NOBODY) {
-    u8g2.print("---");
+  u8g2.setCursor(0, 26);
+  if (inRange) {
+    u8g2.print(shownCm);
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    u8g2.print(F(" cm"));
   } else {
-    u8g2.print((int)cmSmooth);
+    u8g2.print(F("---"));
   }
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  u8g2.setCursor(74, 46);
-  u8g2.print(current == NOBODY ? "" : "cm");
 
-  // A name that is waiting out its hold says so, in place of its own strip.
-  float pending = pendingProgress(now);
-  if (pending > 0.0) {
+  // HOW FAST. The number is what it is doing, the word is which way.
+  u8g2.setFont(u8g2_font_logisoso24_tn);
+  u8g2.setCursor(0, 58);
+  if (inRange) {
+    u8g2.print(shownSpeed);
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    u8g2.print(F(" cm/s"));
     u8g2.setFont(u8g2_font_6x10_tr);
-    u8g2.setCursor(0, 62);
-    u8g2.print(NAME_WORD[candidate]);
-    u8g2.print("?");
-    u8g2.drawFrame(66, 53, 62, 11);
-    u8g2.drawBox(67, 54, (int)(60.0 * pending), 9);
-    u8g2.sendBuffer();
-    return;
+    if (shownDrift == CLOSER)    u8g2.print(F(" closer"));
+    else if (shownDrift == AWAY) u8g2.print(F(" away"));
+    else                         u8g2.print(F(" steady"));
+  } else {
+    u8g2.print(F("---"));
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.print(F(" nobody in range"));
   }
-
-  drawStrip(now);
-  u8g2.sendBuffer();
 }
 
-void drawStrip(unsigned long now) {
-  int x;
-  switch (current) {
-    case HOVERER:                              // loudest: a filled bar
-      u8g2.drawBox(0, 52, 128, 12);
-      break;
-
-    case PASSERBY:                             // a trace movement leaves behind
-      u8g2.drawFrame(0, 52, 128, 12);
-      x = (int)((now % 1200) * 124 / 1200);
-      u8g2.drawBox(x > 122 ? 122 : x, 54, 6, 8);
-      break;
-
-    case WAITING:                              // still ticks, and the seconds
-      for (x = 2; x < 126; x += 6) u8g2.drawPixel(x, 58);
-      u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.setCursor(0, 62);
-      u8g2.print((int)((now - sinceMs) / 1000));
-      u8g2.print("s still");
-      break;
-
-    case NOBODY:                               // one dot, drifting: awake
-    default:
-      x = (int)((now % 6000) * 124 / 6000);
-      u8g2.drawPixel(x, 58);
-      u8g2.drawPixel(x + 1, 58);
-      u8g2.setFont(u8g2_font_6x10_tr);
-      u8g2.setCursor(84, 62);
-      u8g2.print("waiting");
-      break;
-  }
+void drawScreen(unsigned long now) {
+  u8g2.firstPage();
+  do {
+    paint(now);
+  } while (u8g2.nextPage());
 }
 
 // ---- The loop -------------------------------------------------------------
@@ -366,17 +429,21 @@ void loop() {
   }
   if (!warming) updateName(now);
 
+  updateSpeed(now);
+  updateShownCm(now);
   updateLed(now);
   drawScreen(now);
 
   // One line per reading, as a word and a number, for bench.html and the bench.
-  Serial.print("cm ");
+  Serial.print(F("cm "));
   Serial.print(rawCm, 1);
-  Serial.print(" motion ");
+  Serial.print(F(" motion "));
   Serial.print(rawMotion);
-  Serial.print(" held ");
+  Serial.print(F(" speed "));
+  Serial.print(speedCms, 1);
+  Serial.print(F(" held "));
   Serial.print((now - sinceMs) / 1000.0, 1);
-  Serial.print(" name ");
+  Serial.print(F(" name "));
   Serial.println(warming ? "warming" : NAME_WORD[current]);
 
   delay(50);                                   // about 20 readings a second

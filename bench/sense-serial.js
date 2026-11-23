@@ -22,6 +22,13 @@ let motionTest = null;
 // PIR boundaries are 0.175 and 0.30, with NO NAME between them.
 
 const SIGNALS = {
+// The numbers here match bench.ino's lines, so the laptop names you the same
+// way the board does: 0.875 on `near` is the sketch's 20 cm line, `present`
+// turns over at its 150 cm line, and `moving` crosses 0.60 after the same
+// smoothing the sketch uses on the PIR.
+const SIGNALS = {
+  // Near: 1 at the sensor, 0 at 160 cm. 0.875 is 20 cm.
+  near: r => (r.cm === undefined ? 0 : clamp((160 - r.cm) / 160)),
 
   // Near: 1 at the sensor, 0 at 160 cm.
   // 0.875 corresponds to 20 cm.
