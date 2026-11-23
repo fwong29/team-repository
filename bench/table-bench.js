@@ -36,7 +36,7 @@ window.TABLE = {
     },
     {
       name: 'waiting',
-      when: s => s.present > 0.5 && s.moving < 0.175,
+      when: s => s.present > 0.5 && s.moving < 0.175, 
       hold: 1.5
     },
     {

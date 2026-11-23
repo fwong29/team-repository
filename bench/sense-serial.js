@@ -367,7 +367,7 @@ function drawReadout() {
       lines.join('\n');
   }
 
-  requestAnimationFrame(drawReadout);
+  requestAnimationFrame(drawReadout); 
 }
 
 requestAnimationFrame(drawReadout);
