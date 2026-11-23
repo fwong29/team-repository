@@ -1,19 +1,18 @@
-// bench/table-bench.js: our State Table, for the laptop view.
+// bench/table-bench.js: the State Table, for the laptop view.
 //
-// The piece itself does not read this file. The same four names, the same four
-// holds and the same lines live in bench/bench.ino and run on the Nano with
-// nothing attached to it. This copy is here so bench.html names you the same
-// way the board does, and so the table is readable without an Arduino IDE.
-// Change a number here and you have to change it there.
+// The piece itself does not read this file. The same names, holds and lines
+// live in bench/bench.ino and run on the Nano with nothing attached to it.
+// This copy lets bench.html name you the same way the board does.
+// Keep the thresholds here in sync with bench/bench.ino.
 //
 // Signals, each 0 to 1, written by bench/sense-serial.js:
 //   near, present   Ford's HC-SR04 ultrasonic, from "cm"
 //   moving, still   Ethan's PIR motion sensor, from "motion"
 //
 // Rows are checked top to bottom and the first true row wins. hold is in
-// seconds: how long that row has to stay true before the name changes. A row
-// that goes false partway through starts over, so someone who passes through
-// in less than a second is never named at all.
+// seconds: how long that row has to stay true before the name changes.
+// The NO NAME row is immediate because it is the explicit interval between
+// the two PIR thresholds.
 //
 // The four names, who owns each, and why its hold is what it is:
 //

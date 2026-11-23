@@ -16,6 +16,12 @@ let motionTest = null;
 
 // ---- Signals --------------------------------------------------------------
 
+// The numbers here match bench.ino's halved lines:
+// 0.875 on near is the 20 cm line.
+// present turns on inside 75 cm.
+// PIR boundaries are 0.175 and 0.30, with NO NAME between them.
+
+const SIGNALS = {
 // The numbers here match bench.ino's lines, so the laptop names you the same
 // way the board does: 0.875 on `near` is the sketch's 20 cm line, `present`
 // turns over at its 150 cm line, and `moving` crosses 0.60 after the same
@@ -24,14 +30,21 @@ const SIGNALS = {
   // Near: 1 at the sensor, 0 at 160 cm. 0.875 is 20 cm.
   near: r => (r.cm === undefined ? 0 : clamp((160 - r.cm) / 160)),
 
-  // Present: someone within 1.5 metres.
-  present: r => (r.cm !== undefined && r.cm < 150 ? 1 : 0),
+  // Near: 1 at the sensor, 0 at 160 cm.
+  // 0.875 corresponds to 20 cm.
+  near: r =>
+    (r.cm === undefined ? 0 : clamp((160 - r.cm) / 160)),
 
-  // Ethan's PIR. It reads 1 while it sees movement and holds that for a few
-  // seconds afterwards, so `moving` is a ramp once the smoothing below is
-  // applied, and `still` is the other side of the same reading.
-  moving: r => (r.motion === undefined ? 0 : (r.motion > 0.5 ? 1 : 0)),
-  still: r => (r.motion === undefined ? 0 : (r.motion > 0.5 ? 0 : 1)),
+  // Present: someone within 75 cm.
+  present: r =>
+    (r.cm !== undefined && r.cm < 75 ? 1 : 0),
+
+  // Ethan's PIR.
+  moving: r =>
+    (r.motion === undefined ? 0 : (r.motion > 0.5 ? 1 : 0)),
+
+  still: r =>
+    (r.motion === undefined ? 0 : (r.motion > 0.5 ? 0 : 1)),
 };
 
 function clamp(x) {
@@ -50,6 +63,7 @@ let latest = {};
 let failed = false;
 
 function applyTable(now) {
+
   const rows = window.TABLE.states;
   const winner = rows.find(row => row.when(signals));
 
@@ -73,10 +87,12 @@ function applyTable(now) {
 // ---- Arduino Reading ------------------------------------------------------
 
 function parse(line) {
+
   const parts = line.trim().split(/\s+/);
   const reading = {};
 
   for (let i = 0; i + 1 < parts.length; i += 2) {
+
     const value = Number(parts[i + 1]);
 
     if (Number.isFinite(value)) {
@@ -88,10 +104,12 @@ function parse(line) {
 }
 
 function onReading(reading) {
+
   const sampleAt = performance.now();
 
   // Update the PIR motion test.
   if (motionTest?.active) {
+
     const sampleEnd = Math.min(
       sampleAt,
       motionTest.startedAt + MOTION_TEST_DURATION
@@ -115,6 +133,7 @@ function onReading(reading) {
 
   // Update the existing signals.
   for (const name of window.TABLE.signals) {
+
     const read = SIGNALS[name];
 
     if (!read) continue;
@@ -127,10 +146,13 @@ function onReading(reading) {
 // ---- Connect Arduino ------------------------------------------------------
 
 async function start() {
+
   if (!('serial' in navigator)) {
+
     showFailure(
       'This browser has no Web Serial. Open the page in Chrome, on localhost. Press D for the fake sensor.'
     );
+
     return;
   }
 
@@ -138,12 +160,15 @@ async function start() {
   button.textContent = 'Pick the Arduino…';
 
   try {
+
     const port = await navigator.serial.requestPort();
 
     await port.open({ baudRate: BAUD });
 
     for (const name of window.TABLE.signals) {
+
       if (!SIGNALS[name]) {
+
         console.warn(
           `table.js names a signal "${name}" that sense-serial.js does not read yet.`
         );
@@ -154,6 +179,7 @@ async function start() {
     failed = false;
 
     motionTestButton.disabled = false;
+
     motionTestResult.textContent =
       'Ready. Start a 10-second test.';
 
@@ -168,6 +194,7 @@ async function start() {
     let buffer = '';
 
     for (;;) {
+
       const { value, done } = await reader.read();
 
       if (done) break;
@@ -184,6 +211,7 @@ async function start() {
     }
 
   } catch (err) {
+
     console.error(err);
 
     showFailure(
@@ -193,11 +221,14 @@ async function start() {
 }
 
 function tick() {
+
   applyTable(performance.now());
+
   requestAnimationFrame(tick);
 }
 
 function showFailure(message) {
+
   button.disabled = false;
   button.textContent = 'Did not connect. Try again';
 
@@ -271,6 +302,7 @@ function updateMotionTest() {
       latestAt &&
       now - latestAt <= MOTION_READING_MAX_AGE
     ) {
+
       motionTest.motionMs += finalInterval;
     }
 
@@ -342,7 +374,7 @@ function drawReadout() {
       lines.join('\n');
   }
 
-  requestAnimationFrame(drawReadout);
+  requestAnimationFrame(drawReadout); 
 }
 
 requestAnimationFrame(drawReadout);
