@@ -23,8 +23,8 @@ struct Op {                       // one recorded drawing instruction
   std::string text;
 };
 
-struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
-  U8G2_SSD1306_128X64_NONAME_F_HW_I2C(int, int) {}
+struct U8g2Stub {
+  U8g2Stub(int, int) {}
 
   std::vector<Op> ops;            // the frame being built
   std::vector<Op> frame;          // the last frame sent to the screen
@@ -85,3 +85,9 @@ struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
   void drawFrame(int x, int y, int w, int h) { push("frame", x, y, w, h); }
   void drawPixel(int x, int y) { push("pixel", x, y, 1, 1); }
 };
+
+// The sketch can use either constructor: _F_ keeps the whole frame in RAM,
+// _2_ keeps two pages and redraws in four passes. They draw the same calls,
+// so the harness answers to both names.
+typedef U8g2Stub U8G2_SSD1306_128X64_NONAME_F_HW_I2C;
+typedef U8g2Stub U8G2_SSD1306_128X64_NONAME_2_HW_I2C;

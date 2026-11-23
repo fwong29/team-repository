@@ -81,7 +81,7 @@ int main() {
   g_cm = 400; g_motion = 0; run(6000);  check("nobody");
   g_cm = 100; g_motion = 1; run(4000);  check("passerby");
   g_motion = 0; run(5000);              check("waiting");
-  g_cm = 25; run(3000);                 check("hoverer");
+  g_cm = 15; run(3000);                 check("hoverer");
 
   // The widest case: three digits, a two-digit speed, and the longest name.
   g_cm = 400; g_motion = 0; run(5000);
