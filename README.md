@@ -200,7 +200,7 @@ unplugging it forgets everything.
 
 ## Break log
 
-- Mon Nov 23 (`PENDINGHASH`): the harness reported 26 passes for a sketch that did not compile / `run.sh` piped g++ through `grep ... || true`, which hid the error and then ran the binary from the last build that worked / build into a fresh binary, stop on a failure, and say `nothing was run`. It surfaced when the sketch moved to the 2-page U8g2 constructor and the test stub still knew only the full-frame one — every "all passing" between those two changes was reporting on old code.
+- Mon Nov 23 (`a55ffd7`): the harness reported 26 passes for a sketch that did not compile / `run.sh` piped g++ through `grep ... || true`, which hid the error and then ran the binary from the last build that worked / build into a fresh binary, stop on a failure, and say `nothing was run`. It surfaced when the sketch moved to the 2-page U8g2 constructor and the test stub still knew only the full-frame one — every "all passing" between those two changes was reporting on old code.
 - Mon Nov 23 (`9c1f4fb`): the sketch would not upload at all — `data section exceeds available space in board` / global variables came to 2083 bytes and the Nano has 2048: U8g2's full-frame constructor keeps the whole 128 x 64 screen, 1024 bytes, in RAM, and every string literal was sitting in RAM beside it / switched to the 2-page constructor, which keeps 256 bytes and redraws in four passes, and wrapped every literal in `F()` so it stays in flash
 - Fri Oct 23 (`7eec54b`): Nano upload hung / processor setting didn't match the bootloader / switched to ATmega328P (Old Bootloader)
 - Fri Oct 23 (`7eec54b`): Serial Monitor showed garbage characters / monitor was at 9600 baud, sketch sends 115200 / set the monitor to 115200
